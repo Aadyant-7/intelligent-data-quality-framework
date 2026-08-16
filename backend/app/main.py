@@ -1,10 +1,43 @@
-from app.database import engine
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+
+from app.database import get_db
+from app.models import Dataset
 
 app = FastAPI()
+
+class DatasetCreate(BaseModel):
+    file_name: str
+    file_path: str
+    rows_count: int
+    columns_count: int
+
 
 @app.get("/")
 def home():
     return {
         "message": "Intelligent Data Quality Assessment and Anomaly Detection Framework"
     }
+
+
+@app.post("/datasets")
+def create_dataset(dataset: DatasetCreate, db: Session = Depends(get_db)):
+    new_dataset = Dataset(
+        file_name=dataset.file_name,
+        file_path=dataset.file_path,
+        rows_count=dataset.rows_count,
+        columns_count=dataset.columns_count
+    )
+
+    db.add(new_dataset)
+    db.commit()
+    db.refresh(new_dataset)
+
+    return new_dataset
+
+@app.get("/datasets")
+def get_datasets(db: Session = Depends(get_db)):
+    datasets = db.query(Dataset).all()
+
+    return datasets
