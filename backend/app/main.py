@@ -1,9 +1,10 @@
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, File, UploadFile
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Dataset
+from app.services.dataset_ingestion import ingest_csv
 
 app = FastAPI()
 
@@ -35,6 +36,12 @@ def create_dataset(dataset: DatasetCreate, db: Session = Depends(get_db)):
     db.refresh(new_dataset)
 
     return new_dataset
+
+
+@app.post("/datasets/upload")
+def upload_dataset(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    return ingest_csv(file, db)
+
 
 @app.get("/datasets")
 def get_datasets(db: Session = Depends(get_db)):

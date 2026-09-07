@@ -130,6 +130,17 @@ The research also established an important design principle:
 
 For example, negative quantities can represent legitimate cancellation or return transactions.
 
+### Phase 3 — Dataset Ingestion ✅
+
+Implemented:
+
+- `POST /datasets/upload` for CSV uploads
+- CSV extension and readability validation
+- Unique local storage for uploaded files
+- Automatic row and column extraction with Pandas
+- Automatic PostgreSQL metadata records for uploaded datasets
+- Clean separation of upload logic into a reusable ingestion service
+
 ---
 
 ## Data Quality Dimensions
@@ -166,7 +177,7 @@ Business context used to distinguish legitimate unusual values from potential er
 
 - [x] Phase 1 — Environment & Backend Foundation
 - [x] Phase 2 — Dataset Research
-- [ ] Phase 3 — Dataset Ingestion
+- [x] Phase 3 — Dataset Ingestion
 - [ ] Phase 4 — Data Profiling Engine
 - [ ] Phase 5 — Data Quality Engine
 - [ ] Phase 6 — Anomaly Detection Engine
@@ -215,6 +226,7 @@ The local `backend/.env` file must contain the PostgreSQL connection configurati
 |---|---|---|
 | GET | `/` | Backend health/welcome response |
 | POST | `/datasets` | Store dataset metadata |
+| POST | `/datasets/upload` | Upload a CSV and automatically create its metadata record |
 | GET | `/datasets` | Retrieve dataset metadata |
 
 ---
@@ -229,13 +241,16 @@ The local `backend/.env` file must contain the PostgreSQL connection configurati
     │   │   ├── main.py
     │   │   ├── database.py
     │   │   ├── models.py
-    │   │   └── test_db.py
+    │   │   └── services/
+    │   │       └── dataset_ingestion.py
     │   ├── venv/
     │   ├── .env
+    │   ├── uploads/
     │   └── requirements.txt
     │
-    ├── datasets/
-    │   └── Online Retail.xlsx
+├── datasets/
+│   ├── Online Retail.xlsx
+│   └── online_retail_sample.csv
     │
     ├── docs/
     │   └── Documentation.md

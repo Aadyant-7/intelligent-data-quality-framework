@@ -247,16 +247,68 @@ Primary dataset:
 
 ## Phase 3 — Dataset Ingestion
 
-Planned work:
+Status: Complete
 
-- Dataset upload endpoint
-- File validation
-- File handling
-- Dataset metadata extraction
-- Storage management
-- Connect uploaded files with database records
+### 6.1 Objective
 
-Status: Planned
+Phase 3 turns the backend from a metadata-only API into a real dataset-ingestion service. A user can now upload a CSV, and the application validates it, stores it safely, measures its dimensions, and creates a linked PostgreSQL record.
+
+### 6.2 Ingestion Flow
+
+    CSV upload
+          ↓
+    Validate file name and .csv extension
+          ↓
+    Store a uniquely named copy in backend/uploads/
+          ↓
+    Read the CSV with Pandas
+          ↓
+    Extract row and column counts
+          ↓
+    Save dataset metadata in PostgreSQL
+
+### 6.3 API Endpoint
+
+    POST /datasets/upload
+
+The endpoint accepts a multipart file upload. The supported format is currently CSV only, which keeps the ingestion format consistent while the profiling engine is being built.
+
+### 6.4 Validation and Storage
+
+The service rejects missing file names, non-CSV extensions, unreadable CSV files, empty files, malformed CSV content, and invalid text encodings with a useful HTTP 400 response.
+
+Uploaded files receive a UUID prefix before storage. This avoids accidental overwrites when different users upload files with the same original name.
+
+The `backend/uploads/` folder is ignored by Git. The project retains the folder through `.gitkeep`, but never commits user-uploaded files.
+
+### 6.5 Metadata Extraction
+
+Pandas reads the validated CSV and automatically calculates:
+
+- Row count
+- Column count
+
+The original file name, generated storage path, dimensions, and upload timestamp are saved through the existing `Dataset` SQLAlchemy model.
+
+### 6.6 Reusable Service Design
+
+File operations and database persistence were moved into:
+
+    backend/app/services/dataset_ingestion.py
+
+This keeps `main.py` focused on HTTP routes while allowing the ingestion logic to be reused later by profiling and analysis workflows.
+
+### 6.7 Verification
+
+The endpoint was tested with a 5,000-row, 8-column CSV sample derived from the UCI Online Retail dataset.
+
+- Valid CSV upload: HTTP 200
+- Metadata record created in PostgreSQL
+- Invalid Excel upload: HTTP 400 with `Only CSV files are supported.`
+
+### 6.8 Cleanup
+
+The temporary `test_db.py` script was removed. It was only needed during the initial database connection experiment and has been replaced by the actual API-based ingestion workflow.
 
 ---
 

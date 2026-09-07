@@ -13,6 +13,10 @@ __pycache__/
 # Node
 node_modules/
 
+# Uploaded datasets (keep the folder, not user-uploaded files)
+backend/uploads/*
+!backend/uploads/.gitkeep
+
 # OS files
 .DS_Store
 Thumbs.db
