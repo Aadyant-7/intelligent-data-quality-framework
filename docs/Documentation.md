@@ -249,67 +249,6 @@ Primary dataset:
 
 Status: Complete
 
-### 6.1 Objective
-
-Phase 3 turns the backend from a metadata-only API into a real dataset-ingestion service. A user can now upload a CSV, and the application validates it, stores it safely, measures its dimensions, and creates a linked PostgreSQL record.
-
-### 6.2 Ingestion Flow
-
-    CSV upload
-          ↓
-    Validate file name and .csv extension
-          ↓
-    Store a uniquely named copy in backend/uploads/
-          ↓
-    Read the CSV with Pandas
-          ↓
-    Extract row and column counts
-          ↓
-    Save dataset metadata in PostgreSQL
-
-### 6.3 API Endpoint
-
-    POST /datasets/upload
-
-The endpoint accepts a multipart file upload. The supported format is currently CSV only, which keeps the ingestion format consistent while the profiling engine is being built.
-
-### 6.4 Validation and Storage
-
-The service rejects missing file names, non-CSV extensions, unreadable CSV files, empty files, malformed CSV content, and invalid text encodings with a useful HTTP 400 response.
-
-Uploaded files receive a UUID prefix before storage. This avoids accidental overwrites when different users upload files with the same original name.
-
-The `backend/uploads/` folder is ignored by Git. The project retains the folder through `.gitkeep`, but never commits user-uploaded files.
-
-### 6.5 Metadata Extraction
-
-Pandas reads the validated CSV and automatically calculates:
-
-- Row count
-- Column count
-
-The original file name, generated storage path, dimensions, and upload timestamp are saved through the existing `Dataset` SQLAlchemy model.
-
-### 6.6 Reusable Service Design
-
-File operations and database persistence were moved into:
-
-    backend/app/services/dataset_ingestion.py
-
-This keeps `main.py` focused on HTTP routes while allowing the ingestion logic to be reused later by profiling and analysis workflows.
-
-### 6.7 Verification
-
-The endpoint was tested with a 5,000-row, 8-column CSV sample derived from the UCI Online Retail dataset.
-
-- Valid CSV upload: HTTP 200
-- Metadata record created in PostgreSQL
-- Invalid Excel upload: HTTP 400 with `Only CSV files are supported.`
-
-### 6.8 Cleanup
-
-The temporary `test_db.py` script was removed. It was only needed during the initial database connection experiment and has been replaced by the actual API-based ingestion workflow.
-
 ---
 
 ## Phase 4 — Data Profiling Engine
@@ -454,7 +393,7 @@ Status: Planned
 
 ---
 
-## Phase 12 — Documentation & Interview Preparation
+## Phase 12 — Documentation
 
 Final documentation will cover:
 
@@ -468,16 +407,6 @@ Final documentation will cover:
 - Results
 - Limitations
 - Future improvements
-
-Interview preparation will cover:
-
-- Project explanation
-- Technology-specific questions
-- Architecture questions
-- Algorithm questions
-- Design decisions
-- Challenges and solutions
-- Resume explanation
 
 Status: Planned
 
@@ -641,7 +570,7 @@ Commits should represent meaningful checkpoints rather than every small experime
 
 # 12. Documentation Strategy
 
-This document is the detailed development and learning documentation for the project.
+This document is the detailed technical documentation for the project.
 
 Each completed phase will receive its own detailed section containing:
 
@@ -653,7 +582,6 @@ Each completed phase will receive its own detailed section containing:
 - Solutions
 - Technical decisions
 - Lessons learned
-- Interview-ready explanations
 
 The root `README.md` will remain concise and public-facing.
 
@@ -663,17 +591,18 @@ The root `README.md` will remain concise and public-facing.
 
 Current phase:
 
-**Phase 2 — Dataset Research**
+**Phase 3 — Dataset Ingestion**
 
 Completed phases:
 
 - Phase 0 — Planning
 - Phase 1 — Environment & Backend Foundation
 - Phase 2 — Dataset Research
+- Phase 3 — Dataset Ingestion
 
 Next phase:
 
-**Phase 3 — Dataset Ingestion**
+**Phase 4 — Data Profiling Engine**
 
 ---
 
@@ -1227,44 +1156,6 @@ This foundation is now ready for the actual data-processing functionality.
 
 ---
 
-## 14.22 Phase 1 Interview Explanation
-
-A concise interview explanation:
-
-> I first established the backend foundation using FastAPI and PostgreSQL. I used SQLAlchemy as the ORM to map a Python Dataset model to a PostgreSQL table and Pydantic to validate incoming API requests. I implemented POST and GET endpoints for dataset metadata and used FastAPI dependency injection to manage database sessions safely. Database credentials were kept in environment variables and Git was used for version control.
-
-### Key interview questions I should be able to answer
-
-**Why FastAPI?**
-
-FastAPI provides a lightweight Python framework for building APIs with automatic validation and OpenAPI documentation. It also works naturally with Python-based data-processing libraries.
-
-**Why PostgreSQL?**
-
-The project needs persistent structured storage for dataset metadata and analysis results. PostgreSQL is a mature relational database suitable for this requirement.
-
-**Why SQLAlchemy?**
-
-SQLAlchemy allows the application to interact with PostgreSQL through Python objects and ORM models while providing a structured database-access layer.
-
-**What is an ORM?**
-
-An ORM maps objects in application code to relational database tables, allowing developers to work with database records through programming-language objects.
-
-**Why Pydantic?**
-
-Pydantic validates incoming API data against defined schemas before the application processes it.
-
-**Why use `Depends(get_db)`?**
-
-It allows FastAPI to provide a database session to an endpoint and ensures the session lifecycle is handled consistently.
-
-**Why not store the database password directly in Python?**
-
-Credentials should be kept outside source code so they are not exposed through version control and can be changed independently between environments.
-
----
-
 # 15. Phase 2 — Dataset Research
 
 ## 15.1 Objective
@@ -1746,30 +1637,117 @@ These findings directly informed the initial design of the Data Profiling Engine
 
 ---
 
-## 15.21 Phase 2 Interview Explanation
+# 16. Phase 3 — Dataset Ingestion
 
-A concise interview explanation:
+## 16.1 Objective
 
-> I selected the UCI Online Retail dataset because it contains over 541,000 real transaction-line records with missing values, duplicates, numerical anomalies, categorical data, timestamps, customer and product relationships, and business-specific cancellation patterns. I profiled the dataset using Pandas and found issues such as 24.93% missing CustomerIDs, 5,268 duplicate rows, and 650 product codes associated with multiple descriptions. I also found that negative quantities often represented cancellation transactions, which led me to design the framework so that anomalies are interpreted using context rather than automatically treated as errors.
+Phase 3 converts the backend from a metadata-only API into a real ingestion service. A client can submit a CSV file, after which the application validates it, stores it, extracts basic metadata, and creates a linked database record.
 
-### Key interview questions I should be able to answer
+The completed ingestion flow is:
 
-**Why did you choose this dataset?**
+    CSV upload
+          ↓
+    Validate file name and CSV format
+          ↓
+    Store a uniquely named local copy
+          ↓
+    Read the file with Pandas
+          ↓
+    Extract row and column counts
+          ↓
+    Save metadata in PostgreSQL
 
-It provides a large, realistic transactional dataset containing several different types of data-quality problems, making it suitable for demonstrating profiling, quality assessment, and anomaly detection.
+---
 
-**Why didn't you simply clean the dataset first?**
+## 16.2 Upload API
 
-The purpose of the framework is to assess data quality. Automatically cleaning everything would hide the problems we are trying to detect and explain.
+The ingestion endpoint is:
 
-**Why isn't every negative quantity considered invalid?**
+    POST /datasets/upload
 
-Because the dataset contains cancellation/credit transactions where negative quantities can represent legitimate business events.
+It accepts a multipart form-data request containing one `file` field. Multipart form-data is the standard HTTP format used by browsers when a user selects and uploads a file.
 
-**What is the difference between an anomaly and an error?**
+The endpoint currently accepts CSV files only. Keeping one supported format at this stage makes validation and profiling behavior predictable; support for additional formats can be added later without changing the ingestion architecture.
 
-An anomaly is an unusual observation, while an error violates an expected rule or constraint. An unusual value can still be legitimate.
+---
 
-**What quality dimensions did your research identify?**
+## 16.3 Validation Rules
 
-Completeness, uniqueness, validity, consistency, anomaly detection, and context-aware business rules.
+The ingestion service validates the upload before a dataset record is created.
+
+| Check | Behavior on failure |
+|---|---|
+| Missing file name | HTTP 400 response |
+| File extension is not `.csv` | HTTP 400 response |
+| Empty or unreadable CSV | HTTP 400 response |
+| CSV parser or text-encoding failure | HTTP 400 response |
+
+Validation is intentionally performed before persistence. This prevents unsupported files from appearing as valid datasets in PostgreSQL.
+
+---
+
+## 16.4 File Storage
+
+Uploaded files are stored in:
+
+    backend/uploads/
+
+The application keeps the original file name for display, but prepends a UUID to the stored file name. For example:
+
+    online_retail_sample.csv
+          ↓
+    550e8400e29b41d4a716446655440000_online_retail_sample.csv
+
+This avoids overwriting an existing upload when different files have the same name. The stored path is saved relative to the backend upload directory, which keeps database records portable between local environments.
+
+The upload directory is excluded from Git. A `.gitkeep` file preserves the empty folder in the repository, while real user-uploaded files remain local runtime data.
+
+---
+
+## 16.5 Metadata Extraction and Persistence
+
+After storage, Pandas reads the CSV and extracts its dimensions:
+
+- Row count
+- Column count
+
+The service creates a `Dataset` record with the following values:
+
+| Field | Source |
+|---|---|
+| `file_name` | Original upload name |
+| `file_path` | Generated relative storage path |
+| `rows_count` | Pandas DataFrame row count |
+| `columns_count` | Pandas DataFrame column count |
+| `uploaded_at` | Automatically generated timestamp |
+
+If the database transaction fails, the application rolls back the database session and removes the newly stored file. This prevents a partially completed upload from leaving an orphaned file behind.
+
+---
+
+## 16.6 Service-Layer Design
+
+The file-handling and persistence logic lives in:
+
+    backend/app/services/dataset_ingestion.py
+
+The API route in `main.py` only receives the HTTP request and passes it to the service. This separation keeps transport-layer code small and allows later profiling, analysis, or background-processing workflows to reuse the same ingestion logic.
+
+---
+
+## 16.7 Verification
+
+The endpoint was tested with a 5,000-row, 8-column CSV sample derived from the UCI Online Retail dataset.
+
+| Test | Result |
+|---|---|
+| Valid CSV upload | HTTP 200; file stored and PostgreSQL metadata record created |
+| Excel upload | HTTP 400 with `Only CSV files are supported.` |
+
+The temporary `test_db.py` script was removed after this verification. It had been used only for the original database-connection experiment and was superseded by the real API workflow.
+
+---
+
+## 16.8 Phase 3 Result
+
+The platform can now accept a real CSV dataset and persist both the file and its core metadata. This creates the input boundary required for the next phase, where the system will automatically profile the uploaded dataset rather than relying on manual exploratory analysis.
