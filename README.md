@@ -142,6 +142,16 @@ Implemented:
 - Automatic PostgreSQL metadata records for uploaded datasets
 - Clean separation of upload logic into a reusable ingestion service
 
+### Phase 4 — Data Profiling Engine ✅
+
+Implemented:
+
+- `GET /datasets/{dataset_id}/profile` for automated dataset profiling
+- Row, column, duplicate, and missing-value summaries
+- Column data types, inferred logical types, unique values, and sample values
+- Numeric descriptive statistics, date ranges, and top category values
+- Clear handling for datasets that do not exist
+
 ---
 
 ## Data Quality Dimensions
@@ -179,7 +189,7 @@ Business context used to distinguish legitimate unusual values from potential er
 - [x] Phase 1 — Environment & Backend Foundation
 - [x] Phase 2 — Dataset Research
 - [x] Phase 3 — Dataset Ingestion
-- [ ] Phase 4 — Data Profiling Engine
+- [x] Phase 4 — Data Profiling Engine
 - [ ] Phase 5 — Data Quality Engine
 - [ ] Phase 6 — Anomaly Detection Engine
 - [ ] Phase 7 — Explainability
@@ -229,6 +239,7 @@ The local `backend/.env` file must contain the PostgreSQL connection configurati
 | POST | `/datasets` | Store dataset metadata |
 | POST | `/datasets/upload` | Upload a CSV or Excel file and automatically create normalized dataset metadata |
 | GET | `/datasets` | Retrieve dataset metadata |
+| GET | `/datasets/{dataset_id}/profile` | Generate a detailed profile for an uploaded dataset |
 
 ---
 

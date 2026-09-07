@@ -1,9 +1,10 @@
-from fastapi import Depends, FastAPI, File, UploadFile
+from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Dataset
+from app.services.data_profiler import profile_dataset
 from app.services.dataset_ingestion import ingest_dataset
 
 app = FastAPI()
@@ -41,6 +42,15 @@ def create_dataset(dataset: DatasetCreate, db: Session = Depends(get_db)):
 @app.post("/datasets/upload")
 def upload_dataset(file: UploadFile = File(...), db: Session = Depends(get_db)):
     return ingest_dataset(file, db)
+
+
+@app.get("/datasets/{dataset_id}/profile")
+def get_dataset_profile(dataset_id: int, db: Session = Depends(get_db)):
+    dataset = db.get(Dataset, dataset_id)
+    if dataset is None:
+        raise HTTPException(status_code=404, detail="Dataset not found.")
+
+    return profile_dataset(dataset)
 
 
 @app.get("/datasets")

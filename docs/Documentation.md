@@ -248,7 +248,66 @@ The current implementation is deliberately a local development version. It reads
 
 ---
 
-## 7. Technology Roles
+## 7. Phase 4 — Data Profiling Engine
+
+### Goal
+
+Phase 4 adds automated inspection of a stored normalized CSV. Instead of manually running Pandas commands to understand a dataset, a client can request a profile through:
+
+    GET /datasets/{dataset_id}/profile
+
+The endpoint loads the dataset linked to the PostgreSQL record and returns JSON that can later feed the dashboard, quality engine, and report generator.
+
+### Profile Contents
+
+The profiler returns dataset-level information:
+
+- Row and column counts
+- Duplicate-row count
+- Total missing-value count
+- Number of columns containing missing values
+
+For every column, it returns:
+
+- Raw Pandas data type
+- Logical type
+- Missing count and percentage
+- Unique-value count
+- Sample values
+- Numeric summary statistics when applicable
+- Date range for date columns
+- Most common values for categorical columns
+
+### Logical Type Inference
+
+CSV files do not preserve all source semantics. For example, `InvoiceDate` becomes text after CSV storage, and `CustomerID` may appear as a numeric value despite functioning as an identifier.
+
+The profiler uses lightweight, non-destructive rules to classify columns as:
+
+- `identifier` for names containing markers such as `ID`, `Code`, or `No`
+- `datetime` for date-like values
+- `numeric` for measurable numeric columns
+- `categorical` for low-cardinality values
+- `text` for other string content
+
+This prevents misleading metrics. `CustomerID`, for example, is labeled as an identifier and does not receive a meaningless average or standard deviation.
+
+### Verification
+
+Profiling the full Online Retail dataset produced:
+
+- 541,909 rows and 8 columns
+- 5,268 duplicate rows
+- 136,534 total missing values across 2 columns
+- `CustomerID` missing rate of 24.93%
+- Transaction date range from December 2010 to December 2011
+- United Kingdom as the most frequent country with 495,478 records
+
+The endpoint also returns HTTP `404` with a clear message when the requested dataset record does not exist.
+
+---
+
+## 8. Technology Roles
 
 | Technology | Role in the project |
 |---|---|
@@ -264,14 +323,14 @@ The current implementation is deliberately a local development version. It reads
 
 ---
 
-## 8. Roadmap
+## 9. Roadmap
 
 | Phase | Scope | Status |
 |---|---|---|
 | 1 | Environment and backend foundation | Complete |
 | 2 | Dataset research | Complete |
 | 3 | Dataset ingestion | Complete |
-| 4 | Data profiling engine | Next |
+| 4 | Data profiling engine | Complete |
 | 5 | Data quality engine | Planned |
 | 6 | Anomaly detection | Planned |
 | 7 | Explainability | Planned |
@@ -279,6 +338,6 @@ The current implementation is deliberately a local development version. It reads
 | 11 | Deployment | Planned |
 | 12 | Final documentation | Planned |
 
-## 9. Next Step
+## 10. Next Step
 
-Phase 4 will add automatic profiling for every normalized dataset: data types, missing values, duplicate rows, unique values, descriptive statistics, and column-level summaries.
+Phase 5 will turn profiling evidence into explicit data-quality dimensions and scores for completeness, uniqueness, validity, and consistency.
