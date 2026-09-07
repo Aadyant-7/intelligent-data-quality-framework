@@ -152,6 +152,17 @@ Implemented:
 - Numeric descriptive statistics, date ranges, and top category values
 - Clear handling for datasets that do not exist
 
+### Phase 5 — Data Quality Engine ✅
+
+Implemented:
+
+- `GET /datasets/{dataset_id}/quality` for an explainable quality assessment
+- Weighted scores for completeness, uniqueness, validity, and consistency
+- An overall score and human-readable grade
+- Issue evidence with severity, affected-record counts, and clear explanations
+- Context-aware Online Retail checks: cancellation-style invoices, negative prices, zero-price review, and `StockCode`/description mismatches
+- Shared storage-path validation used by profiling and quality services
+
 ---
 
 ## Data Quality Dimensions
@@ -190,7 +201,7 @@ Business context used to distinguish legitimate unusual values from potential er
 - [x] Phase 2 — Dataset Research
 - [x] Phase 3 — Dataset Ingestion
 - [x] Phase 4 — Data Profiling Engine
-- [ ] Phase 5 — Data Quality Engine
+- [x] Phase 5 — Data Quality Engine
 - [ ] Phase 6 — Anomaly Detection Engine
 - [ ] Phase 7 — Explainability
 - [ ] Phase 8 — React Dashboard
@@ -240,37 +251,7 @@ The local `backend/.env` file must contain the PostgreSQL connection configurati
 | POST | `/datasets/upload` | Upload a CSV or Excel file and automatically create normalized dataset metadata |
 | GET | `/datasets` | Retrieve dataset metadata |
 | GET | `/datasets/{dataset_id}/profile` | Generate a detailed profile for an uploaded dataset |
-
----
-
-## Project Structure
-
-    intelligent-data-quality-framework/
-    │
-    ├── backend/
-    │   ├── app/
-    │   │   ├── __init__.py
-    │   │   ├── main.py
-    │   │   ├── database.py
-    │   │   ├── models.py
-    │   │   └── services/
-    │   │       └── dataset_ingestion.py
-    │   ├── venv/
-    │   ├── .env
-    │   ├── uploads/
-    │   └── requirements.txt
-    │
-├── datasets/
-│   ├── Online Retail.xlsx
-│   └── online_retail_sample.csv
-    │
-    ├── docs/
-    │   └── Documentation.md
-    │
-    ├── frontend/
-    │
-    ├── .gitignore
-    └── README.md
+| GET | `/datasets/{dataset_id}/quality` | Calculate explainable data-quality scores and issues |
 
 ---
 

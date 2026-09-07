@@ -10,7 +10,7 @@ The project is built around real public data rather than fabricated examples. It
 
 ## 2. Current Status
 
-**Completed through Phase 3 — Dataset Ingestion**
+**Completed through Phase 5 — Data Quality Engine**
 
 The system can currently:
 
@@ -22,8 +22,10 @@ The system can currently:
 - Store normalized files locally with collision-resistant names.
 - Extract row and column counts with Pandas.
 - Create a linked PostgreSQL dataset record.
+- Generate a detailed structural profile of an uploaded dataset.
+- Calculate explainable data-quality scores and evidence.
 
-The next phase is **Data Profiling**, where the system will inspect the contents of an uploaded dataset instead of only recording its dimensions.
+The next phase is **Anomaly Detection**, where the system will identify unusual numeric observations without treating every unusual value as an error.
 
 ---
 
@@ -44,6 +46,8 @@ The current ingestion flow is:
     Pandas extracts basic metadata
               ↓
     PostgreSQL stores dataset record
+              ↓
+    Profiling and quality endpoints inspect the normalized CSV
 
 This design is intentional: every later component can work with CSV data, even when the original upload was an Excel workbook.
 
@@ -307,7 +311,64 @@ The endpoint also returns HTTP `404` with a clear message when the requested dat
 
 ---
 
-## 8. Technology Roles
+## 8. Phase 5 — Data Quality Engine
+
+### Goal
+
+Phase 5 turns the raw evidence from profiling into a concise, explainable assessment:
+
+    GET /datasets/{dataset_id}/quality
+
+The response provides an overall score, a grade, four dimension scores, and a list of the exact issues that influenced the result. It does not modify or delete uploaded data.
+
+### Quality Dimensions and Weights
+
+| Dimension | Weight | What is measured |
+|---|---:|---|
+| Completeness | 30% | The proportion of populated cells, plus missing-value evidence by column |
+| Uniqueness | 25% | The proportion of rows that are not duplicates |
+| Validity | 25% | Values that violate available business-aware rules |
+| Consistency | 20% | Whether related fields agree with each other |
+
+The weighted score maps to a simple grade: `Excellent` (95 or above), `Good` (85–94.99), `Fair` (70–84.99), or `Needs attention` (below 70).
+
+### Context-Aware Retail Rules
+
+Generic checks such as completeness and duplicate detection work for every uploaded CSV. Some checks only make sense when the required Online Retail columns are present; otherwise the response marks that dimension as `not_evaluated` rather than inventing a perfect score.
+
+For the retail dataset, validity checks identify negative quantities without cancellation-style invoice numbers and negative unit prices. Zero-priced rows are reported for review but are not automatically treated as invalid, because a free item may be legitimate. Consistency checks identify `StockCode` values linked to more than one product description.
+
+This preserves the project principle that unusual data is evidence to investigate, not a reason to delete a record automatically.
+
+### Explainable Results
+
+Each issue contains its quality dimension, severity, affected-record count, relevant column when available, and a plain-language message. This gives a later dashboard or report enough information to explain a score rather than display an unexplained number.
+
+### Verification
+
+The endpoint was tested against the normalized full Online Retail dataset (dataset ID 8):
+
+| Result | Value |
+|---|---:|
+| Overall score | 95.47 / 100 (`Excellent`) |
+| Completeness | 96.85 |
+| Uniqueness | 99.03 |
+| Validity | 99.75 |
+| Consistency | 83.58 |
+| Missing values | 136,534 |
+| Duplicate rows | 5,268 |
+| Invalid rows under the implemented rules | 1,338 |
+| Inconsistent `StockCode` values | 650 |
+
+An unknown dataset ID was also verified to return HTTP `404`.
+
+### Service Organization
+
+Application logic now lives under `backend/app/services/`: ingestion handles file input, profiling describes a dataset, the quality engine scores it, and the storage helper safely resolves persisted upload paths. This separation keeps the FastAPI route file focused on HTTP requests and makes each capability reusable.
+
+---
+
+## 9. Technology Roles
 
 | Technology | Role in the project |
 |---|---|
@@ -323,7 +384,7 @@ The endpoint also returns HTTP `404` with a clear message when the requested dat
 
 ---
 
-## 9. Roadmap
+## 10. Roadmap
 
 | Phase | Scope | Status |
 |---|---|---|
@@ -331,13 +392,13 @@ The endpoint also returns HTTP `404` with a clear message when the requested dat
 | 2 | Dataset research | Complete |
 | 3 | Dataset ingestion | Complete |
 | 4 | Data profiling engine | Complete |
-| 5 | Data quality engine | Planned |
+| 5 | Data quality engine | Complete |
 | 6 | Anomaly detection | Planned |
 | 7 | Explainability | Planned |
 | 8–10 | Dashboard, visualizations, and reports | Planned |
 | 11 | Deployment | Planned |
 | 12 | Final documentation | Planned |
 
-## 10. Next Step
+## 11. Next Step
 
-Phase 5 will turn profiling evidence into explicit data-quality dimensions and scores for completeness, uniqueness, validity, and consistency.
+Phase 6 will add statistical and machine-learning-assisted anomaly detection, starting with numeric transaction fields while retaining the business context established in Phase 5.

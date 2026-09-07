@@ -1,18 +1,17 @@
 """Dataset profiling utilities for normalized CSV files."""
 
-from pathlib import Path
 from typing import Any
 
 import pandas as pd
 from fastapi import HTTPException
 
 from app.models import Dataset
-from app.services.dataset_ingestion import UPLOAD_DIRECTORY
+from app.services.dataset_storage import resolve_dataset_path
 
 
 def profile_dataset(dataset: Dataset) -> dict[str, Any]:
     """Return a JSON-safe summary of a stored normalized dataset."""
-    file_path = _resolve_dataset_path(dataset.file_path)
+    file_path = resolve_dataset_path(dataset.file_path)
     if not file_path.is_file():
         raise HTTPException(status_code=404, detail="Stored dataset file was not found.")
 
@@ -35,16 +34,6 @@ def profile_dataset(dataset: Dataset) -> dict[str, Any]:
         ),
         "columns": column_profiles,
     }
-
-
-def _resolve_dataset_path(stored_path: str) -> Path:
-    storage_root = UPLOAD_DIRECTORY.resolve()
-    candidate_path = (UPLOAD_DIRECTORY.parent / stored_path).resolve()
-
-    if storage_root not in candidate_path.parents:
-        raise HTTPException(status_code=400, detail="Dataset storage path is invalid.")
-
-    return candidate_path
 
 
 def _profile_column(column_name: str, series: pd.Series, rows_count: int) -> dict[str, Any]:

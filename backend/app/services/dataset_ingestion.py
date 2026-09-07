@@ -9,9 +9,9 @@ from fastapi import HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from app.models import Dataset
+from app.services.dataset_storage import UPLOAD_DIRECTORY
 
 
-UPLOAD_DIRECTORY = Path(__file__).resolve().parents[2] / "uploads"
 SUPPORTED_FILE_EXTENSIONS = {".csv", ".xlsx"}
 
 
