@@ -134,8 +134,9 @@ For example, negative quantities can represent legitimate cancellation or return
 
 Implemented:
 
-- `POST /datasets/upload` for CSV uploads
-- CSV extension and readability validation
+- `POST /datasets/upload` for CSV and Excel (`.xlsx`) uploads
+- File-type and readability validation
+- Excel-to-CSV normalization for one consistent analysis format
 - Unique local storage for uploaded files
 - Automatic row and column extraction with Pandas
 - Automatic PostgreSQL metadata records for uploaded datasets
@@ -226,7 +227,7 @@ The local `backend/.env` file must contain the PostgreSQL connection configurati
 |---|---|---|
 | GET | `/` | Backend health/welcome response |
 | POST | `/datasets` | Store dataset metadata |
-| POST | `/datasets/upload` | Upload a CSV and automatically create its metadata record |
+| POST | `/datasets/upload` | Upload a CSV or Excel file and automatically create normalized dataset metadata |
 | GET | `/datasets` | Retrieve dataset metadata |
 
 ---

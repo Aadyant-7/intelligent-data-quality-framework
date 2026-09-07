@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Dataset
-from app.services.dataset_ingestion import ingest_csv
+from app.services.dataset_ingestion import ingest_dataset
 
 app = FastAPI()
 
@@ -40,7 +40,7 @@ def create_dataset(dataset: DatasetCreate, db: Session = Depends(get_db)):
 
 @app.post("/datasets/upload")
 def upload_dataset(file: UploadFile = File(...), db: Session = Depends(get_db)):
-    return ingest_csv(file, db)
+    return ingest_dataset(file, db)
 
 
 @app.get("/datasets")
