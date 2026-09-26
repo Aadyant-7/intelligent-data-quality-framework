@@ -39,6 +39,7 @@ def explain_row(
         value = _json_value(numeric_data.at[index, column])
         direction = "below" if value < bounds["lower_bound"] else "above"
         boundary = bounds["lower_bound"] if direction == "below" else bounds["upper_bound"]
+        method_label = "IQR" if method == "iqr" else "Z-score"
         method_evidence.append({
             "method": method,
             "field": column,
@@ -46,7 +47,7 @@ def explain_row(
             "direction": direction,
             "boundary": boundary,
             "distance_from_boundary": round(abs(value - boundary), 6),
-            "message": f"{column} is {direction} the {method.upper()} boundary.",
+            "message": f"{column} is {direction} the {method_label} boundary.",
         })
 
     interpretation = _business_interpretation(

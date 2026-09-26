@@ -66,9 +66,10 @@ This project aims to build an automated framework that can:
 - IQR
 - Isolation Forest
 
-### Frontend (planned)
+### Frontend
 
 - React
+- Vite
 
 ### Visualization (planned)
 
@@ -187,6 +188,19 @@ Implemented:
 
 The model explains that a combination is unusual, but it does not claim to identify the field that caused an Isolation Forest flag. Retail interpretations distinguish a possible return from a possible quality issue without making a final business judgment.
 
+### Phase 8 — React Dashboard ✅
+
+Implemented:
+
+- A local React dashboard for uploading and switching between datasets
+- An overview of dataset size, available quality scores, and leading findings
+- A column-by-column profile, explainable quality findings, and a paginated anomaly review queue
+- Row-number lookup with method evidence and a suggested next check
+- Loading, empty, and API-error states, with retry controls where useful
+- A responsive layout for desktop and smaller screens
+
+The dashboard calls the existing FastAPI endpoints. It keeps anomaly flags separate from quality errors and shows `Not evaluated` when a rule cannot assess the dataset. Interactive charts and downloadable reports are planned for later phases.
+
 ---
 
 ## Assessment Capabilities
@@ -228,7 +242,7 @@ Business context used to distinguish legitimate unusual values from potential er
 - [x] Phase 5 — Data Quality Engine
 - [x] Phase 6 — Anomaly Detection Engine
 - [x] Phase 7 — Explainability
-- [ ] Phase 8 — React Dashboard
+- [x] Phase 8 — React Dashboard
 - [ ] Phase 9 — Interactive Visualizations
 - [ ] Phase 10 — Report Generation
 - [ ] Phase 11 — Deployment
@@ -263,6 +277,16 @@ Alternative API documentation:
     http://127.0.0.1:8000/redoc
 
 The local `backend/.env` file must contain the PostgreSQL connection configuration. It is intentionally excluded from Git.
+
+### 4. Start the dashboard
+
+In a second terminal, from the repository root:
+
+    cd frontend
+    npm ci
+    npm run dev
+
+Open `http://127.0.0.1:5173`. Keep the backend running at `http://127.0.0.1:8000`; Vite forwards dashboard `/api` requests to it during local development. `npm run build` checks and builds the frontend. The dashboard accepts the backend's current `.csv` and `.xlsx` upload formats.
 
 ---
 

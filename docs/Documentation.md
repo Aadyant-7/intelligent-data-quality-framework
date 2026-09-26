@@ -10,7 +10,7 @@ The project is built around real public data rather than fabricated examples. It
 
 ## 2. Current Status
 
-**Completed through Phase 7 — Explainability**
+**Completed through Phase 8 — React Dashboard**
 
 The system can currently:
 
@@ -26,8 +26,9 @@ The system can currently:
 - Calculate explainable data-quality scores and evidence.
 - Flag unusual numeric observations with statistical and Isolation Forest methods.
 - Explain why a row was flagged and describe relevant retail business context.
+- Browse these results in a local React dashboard, upload datasets, and inspect individual rows.
 
-The next phase is the **React dashboard**, which will make these results easier to browse.
+The next phase is **interactive visualizations** for profiles, scores, and anomaly patterns.
 
 ---
 
@@ -441,7 +442,38 @@ Explanations are based on current thresholds and the available retail fields. Th
 
 ---
 
-## 11. Technology Roles
+## 11. Phase 8 — React Dashboard
+
+### What Was Added
+
+The `frontend/` application uses React and Vite to present the existing API in one workspace. Users can upload a `.csv` or `.xlsx` file, search and select a stored dataset, and move between four views:
+
+| View | What it shows |
+|---|---|
+| Overview | Dataset size, available quality scores, and leading findings |
+| Profile | Missing values, duplicates, field types, examples, and column details |
+| Quality | Overall and dimension scores, plus issue severity, counts, and explanations |
+| Anomalies | Method status, paginated flagged rows, and evidence for any chosen data-row number |
+
+The interface shows loading, empty, and error states. Failed profile, quality, and anomaly requests can be retried. A missing local upload file is surfaced as an error rather than displayed as a clean dataset. Smaller screens keep dataset selection available through a horizontally scrollable list.
+
+### Architecture and Local Use
+
+`frontend/src/App.jsx` owns selection, tab state, data loading, and the views. `frontend/src/api.js` contains the HTTP calls and error handling; `frontend/src/format.js` contains display formatting; `frontend/src/styles.css` contains layout and responsive rules. Profile and anomaly pages are fetched when opened and cached for the current session. A dataset switch cancels in-flight requests and starts a fresh quality request.
+
+Run the backend on `127.0.0.1:8000`, then run `npm ci` and `npm run dev` from `frontend/`. Open `http://127.0.0.1:5173`. The Vite development proxy forwards `/api` to the backend, so no separate browser CORS configuration is needed for this local setup. `npm run build` creates the production frontend bundle; deployment is planned for Phase 11.
+
+### Verification and Limits
+
+The production build passed and npm's audit found no known vulnerabilities in the locked dependencies. The browser was checked with the real 5,000-row upload: overview, column details, quality findings, anomaly paging, a flagged row's evidence, an unflagged row, dataset search, and switching to the full 541,909-row upload. A missing stored file produced a visible error. A four-row CSV uploaded through the development proxy and appeared as dataset ID 10 in the local workspace; its profile, quality, and anomaly endpoints responded. An unknown dataset ID returned HTTP 404 through the proxy. At phone width, the dataset selector and main content stayed within the viewport. Stopping the backend showed a clear connection error; restarting it and using Retry restored the dashboard.
+
+This phase also corrected a backend explanation label from `Z_SCORE` to `Z-score`; backend compilation and all 14 regression tests passed, and the live row explanation showed the corrected wording.
+
+The dashboard is a local development application. It does not yet have charts, downloadable reports, authentication, hosted storage, or deployment. Analysis remains calculated on request by the backend. Dataset IDs above refer only to this local development database.
+
+---
+
+## 12. Technology Roles
 
 | Technology | Role in the project |
 |---|---|
@@ -454,11 +486,12 @@ Explanations are based on current thresholds and the available retail fields. Th
 | Pandas | Reading, converting, and profiling datasets |
 | OpenPyXL | Excel `.xlsx` support for Pandas |
 | NumPy and scikit-learn | Numeric anomaly calculations and Isolation Forest |
+| React and Vite | Local dashboard and frontend development/build tooling |
 | Git and GitHub | Version control and public project history |
 
 ---
 
-## 12. Roadmap
+## 13. Roadmap
 
 | Phase | Scope | Status |
 |---|---|---|
@@ -469,10 +502,12 @@ Explanations are based on current thresholds and the available retail fields. Th
 | 5 | Data quality engine | Complete |
 | 6 | Anomaly detection | Complete |
 | 7 | Explainability | Complete |
-| 8–10 | Dashboard, visualizations, and reports | Planned |
+| 8 | React dashboard | Complete |
+| 9 | Interactive visualizations | Planned |
+| 10 | Report generation | Planned |
 | 11 | Deployment | Planned |
 | 12 | Final documentation and polish | Planned |
 
-## 13. Next Step
+## 14. Next Step
 
-Phase 8 will add a React dashboard for uploading datasets and browsing profiles, quality evidence, anomalies, and row explanations through the API.
+Phase 9 will add interactive visualizations that make field distributions, quality dimensions, and anomaly patterns easier to explore without changing the meaning of the underlying evidence.

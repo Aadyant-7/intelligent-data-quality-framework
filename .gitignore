@@ -12,6 +12,7 @@ __pycache__/
 
 # Node
 node_modules/
+frontend/dist/
 
 # Uploaded datasets (keep the folder, not user-uploaded files)
 backend/uploads/*
