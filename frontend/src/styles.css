@@ -84,6 +84,10 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 3px 
 .hero-panel p { margin: 0; max-width: 550px; color: #c5e0df; font-size: 12px; line-height: 1.55; }
 .hero-id { border: 1px solid rgba(185, 237, 226, .3); border-radius: 11px; padding: 9px 13px; color: #b9d8d4; font-size: 10px; white-space: nowrap; letter-spacing: .08em; }
 .hero-id strong { color: white; margin-left: 6px; font-size: 13px; }
+.hero-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 12px; min-width: 175px; }
+.report-button { background: #f4fcf8; color: #174b45; border: 1px solid #f4fcf8; white-space: nowrap; }
+.report-button:hover:not(:disabled) { background: white; }
+.report-error { color: #ffe4dc !important; max-width: 220px !important; text-align: right; }
 .stats-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
 .stats-grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .stat-card { background: white; border: 1px solid #e0e9e6; border-radius: 13px; padding: 19px 20px; min-height: 113px; box-shadow: 0 4px 13px rgba(28, 62, 60, .025); }

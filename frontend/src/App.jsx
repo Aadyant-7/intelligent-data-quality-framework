@@ -89,14 +89,14 @@ function Sidebar({ datasets, selectedId, onSelect, loading, error, reload, file,
   )
 }
 
-function Overview({ dataset, qualityState, onNavigate }) {
+function Overview({ dataset, qualityState, onNavigate, onReport, reporting, reportError }) {
   const quality = qualityState.data
   const issues = quality?.issues ?? []
   return (
     <div className="section-stack">
       <section className="hero-panel">
         <div><span className="hero-kicker">DATASET WORKSPACE</span><h2>{dataset.file_name}</h2><p>Start with the shape of your data, then inspect the evidence behind quality scores and unusual records.</p></div>
-        <div className="hero-id">DATASET <strong>#{dataset.id}</strong></div>
+        <div className="hero-actions"><div className="hero-id">DATASET <strong>#{dataset.id}</strong></div><button className="button report-button" onClick={onReport} disabled={reporting}>{reporting ? 'Preparing PDF…' : 'Download PDF report'}</button>{reportError && <p role="alert" className="report-error">{reportError}</p>}</div>
       </section>
       <div className="stats-grid">
         <StatCard label="ROWS" value={formatNumber(dataset.rows_count, 0)} detail="Stored records" />
@@ -206,6 +206,8 @@ export default function App() {
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState('')
   const [notice, setNotice] = useState('')
+  const [reporting, setReporting] = useState(false)
+  const [reportError, setReportError] = useState('')
   const [qualityState, setQualityState] = useState({ data: null, loading: false, error: '' })
   const [qualityReload, setQualityReload] = useState(0)
   const [profileState, setProfileState] = useState({ data: null, loading: false, error: '' })
@@ -304,6 +306,29 @@ export default function App() {
     setPageOffset(0)
     setRowInput('')
     setNotice('')
+    setReportError('')
+  }
+
+  async function handleReport() {
+    if (!selectedId || reporting) return
+    const reportId = selectedId
+    setReporting(true)
+    setReportError('')
+    try {
+      const blob = await api.report(reportId)
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `dataset-${reportId}-quality-report.pdf`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 60_000)
+    } catch (error) {
+      setReportError(error.message)
+    } finally {
+      setReporting(false)
+    }
   }
 
   async function handleUpload(event) {
@@ -362,7 +387,7 @@ export default function App() {
       {notice && <div className="success-notice" role="status">✓ {notice}<button onClick={() => setNotice('')} aria-label="Dismiss notification">×</button></div>}
       {!selectedDataset ? listLoading ? <LoadingBlock label="Opening workspace…" /> : listError ? <ErrorBlock message={listError} retry={() => setListReload((value) => value + 1)} /> : <EmptyBlock title="Your workspace is ready">Upload a CSV or Excel dataset to start exploring its quality.</EmptyBlock> : <>
         <nav className="tabs" aria-label="Dataset sections">{TABS.map((tab) => <button key={tab.id} className={activeTab === tab.id ? 'active' : ''} onClick={() => setActiveTab(tab.id)} aria-current={activeTab === tab.id ? 'page' : undefined}>{tab.label}</button>)}</nav>
-        {activeTab === 'overview' && <Overview dataset={selectedDataset} qualityState={qualityState} onNavigate={setActiveTab} />}
+        {activeTab === 'overview' && <Overview dataset={selectedDataset} qualityState={qualityState} onNavigate={setActiveTab} onReport={handleReport} reporting={reporting} reportError={reportError} />}
         {activeTab === 'profile' && <Profile state={profileState} retry={() => setProfileReload((value) => value + 1)} />}
         {activeTab === 'quality' && <Quality state={qualityState} retry={() => setQualityReload((value) => value + 1)} />}
         {activeTab === 'anomalies' && <Anomalies state={anomalyState} retry={() => setAnomalyReload((value) => value + 1)} onPage={(offset) => { setPageOffset(offset); setExplanation(null); setExplanationError('') }} explanation={explanation} explanationLoading={explanationLoading} explanationError={explanationError} onExplain={explainRow} onCloseExplanation={() => setExplanation(null)} rowInput={rowInput} setRowInput={setRowInput} onLookup={handleLookup} />}

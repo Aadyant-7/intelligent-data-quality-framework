@@ -1,6 +1,6 @@
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/$/, '')
 
-async function request(path, options = {}) {
+async function request(path, options = {}, responseType = 'json') {
   let response
   try {
     response = await fetch(`${API_BASE}${path}`, options)
@@ -8,6 +8,8 @@ async function request(path, options = {}) {
     if (error.name === 'AbortError') throw error
     throw new Error('Could not reach the API. Check that the backend is running.')
   }
+
+  if (response.ok && responseType === 'blob') return response.blob()
 
   const text = await response.text()
   let payload
@@ -36,6 +38,7 @@ export const api = {
   datasets: (signal) => request('/datasets', { signal }),
   profile: (id, signal) => request(`/datasets/${encodeURIComponent(id)}/profile`, { signal }),
   quality: (id, signal) => request(`/datasets/${encodeURIComponent(id)}/quality`, { signal }),
+  report: (id) => request(`/datasets/${encodeURIComponent(id)}/report`, {}, 'blob'),
   visualization: (id, column, signal) =>
     request(`/datasets/${encodeURIComponent(id)}/visualizations?column=${encodeURIComponent(column)}`, { signal }),
   anomalies: (id, offset = 0, limit = 20, signal) =>

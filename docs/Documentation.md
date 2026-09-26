@@ -10,7 +10,7 @@ The project is built around real public data rather than fabricated examples. It
 
 ## 2. Current Status
 
-**Completed through Phase 9 — Interactive Visualizations**
+**Completed through Phase 10 — Report Generation**
 
 The system can currently:
 
@@ -28,8 +28,9 @@ The system can currently:
 - Explain why a row was flagged and describe relevant retail business context.
 - Browse these results in a local React dashboard, upload datasets, and inspect individual rows.
 - Explore quality, missingness, anomaly signals, and field distributions with interactive charts.
+- Download a PDF assessment of the current stored dataset.
 
-The next phase is **report generation**.
+The next phase is **deployment**.
 
 ---
 
@@ -470,7 +471,7 @@ The production build passed and npm's audit found no known vulnerabilities in th
 
 This phase also corrected a backend explanation label from `Z_SCORE` to `Z-score`; backend compilation and all 14 regression tests passed, and the live row explanation showed the corrected wording.
 
-The dashboard is a local development application. Downloadable reports, authentication, hosted storage, and deployment remain future work. Analysis remains calculated on request by the backend. Dataset IDs above refer only to this local development database.
+The dashboard is a local development application. Authentication, hosted storage, and deployment remain future work. Analysis remains calculated on request by the backend. Dataset IDs above refer only to this local development database.
 
 ---
 
@@ -499,11 +500,29 @@ Quality dimensions without a score are omitted from the score chart and describe
 
 Backend compilation and all 20 automated tests passed, including checks for histogram count conservation, categories grouped into `Other`, date buckets, identifier exclusion, missing files, and extremely large finite numbers. On the real 5,000-row retail sample, the Quantity full histogram counted 5,000 rows; its typical-range chart counted 4,906 and reported 94 outside. On the full 541,909-row upload, month buckets and full Quantity bins each summed to 541,909; the typical range counted 531,914 and reported 9,995 outside. A generic four-row dataset also rendered. Unknown IDs and columns returned 404. Browser checks covered numeric, category, and date selection, range switching, chart layout, dataset switching, and phone width.
 
-The endpoint reads one entire column into memory per request, then sends bounded chart data. It is not a streaming or asynchronous analysis service. Chart zoom changes the display; it does not recalculate quality or anomaly rules. The Plotly chart bundle is a separate download of about 381 kB compressed. Report export belongs to Phase 10.
+The endpoint reads one entire column into memory per request, then sends bounded chart data. It is not a streaming or asynchronous analysis service. Chart zoom changes the display; it does not recalculate quality or anomaly rules. The Plotly chart bundle is a separate download of about 381 kB compressed.
 
 ---
 
-## 13. Technology Roles
+## 13. Phase 10 — Report Generation
+
+### What the PDF Contains
+
+`GET /datasets/{dataset_id}/report` returns an A4 PDF with an attachment filename. The dataset overview has a **Download PDF report** button, with a preparing state and an error message if generation fails. The backend uses ReportLab to format the current profile, quality assessment, and anomaly results in memory. It does not store the PDF or computed results in the database.
+
+The report gives the overall score and grade, each dimension's weight and score or `Not evaluated` status, severity and affected counts for quality findings, column-level missing and unique counts, distinct flagged-row count, anomaly method counts, and five explained examples. Retail cancellation context appears only when the source columns support it. It states that method counts may overlap and that anomaly flags require investigation. If a dataset lacks retail fields, validity and consistency remain unevaluated and their weights are excluded from the overall score.
+
+Reports show at most 40 columns, 50 findings, and 30 anomaly method/field rows; any omitted rows are counted in a visible note and remain available through the existing API. The report does not include every raw record. Reports are generated synchronously and recompute analyses from the stored CSV, so a large upload can take several seconds. The source file is never changed.
+
+### Verification and Limits
+
+Backend compilation and all 23 automated tests passed. Tests cover PDF generation, unevaluated retail checks for a generic CSV, a header-only legacy file, missing stored files, and traversal-path rejection. Live PDF responses were checked for a four-row generic CSV, a 5,000-row retail sample, and the 541,909-row retail upload. The full upload generated a PDF in about eight seconds. Unknown dataset IDs and missing stored files returned HTTP 404. Generated pages were rendered and visually inspected, and the browser button made a successful request to the report endpoint. The frontend production build passed; Vite still warns that the separate Plotly bundle is large.
+
+The PDF is a point-in-time assessment of local data, not a certification. Generic validity or consistency rules beyond the current retail checks are future work. The report is not yet a scheduled export, persisted snapshot, or asynchronous job.
+
+---
+
+## 14. Technology Roles
 
 | Technology | Role in the project |
 |---|---|
@@ -518,11 +537,12 @@ The endpoint reads one entire column into memory per request, then sends bounded
 | NumPy and scikit-learn | Numeric anomaly calculations and Isolation Forest |
 | React and Vite | Local dashboard and frontend development/build tooling |
 | Plotly.js | Interactive charts in the dashboard |
+| ReportLab | PDF assessment layout and export |
 | Git and GitHub | Version control and public project history |
 
 ---
 
-## 14. Roadmap
+## 15. Roadmap
 
 | Phase | Scope | Status |
 |---|---|---|
@@ -535,10 +555,10 @@ The endpoint reads one entire column into memory per request, then sends bounded
 | 7 | Explainability | Complete |
 | 8 | React dashboard | Complete |
 | 9 | Interactive visualizations | Complete |
-| 10 | Report generation | Planned |
+| 10 | Report generation | Complete |
 | 11 | Deployment | Planned |
 | 12 | Final documentation and polish | Planned |
 
-## 15. Next Step
+## 16. Next Step
 
-Phase 10 will turn the assessed evidence into a downloadable report. It should retain scores, counted findings, anomaly caveats, and the distinction between assessed and unevaluated checks.
+Phase 11 will prepare the backend, frontend, database, and uploaded-file storage for deployment. It must preserve the current data and security rules while moving beyond the local development setup.

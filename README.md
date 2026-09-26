@@ -75,6 +75,10 @@ This project aims to build an automated framework that can:
 
 - Plotly.js (basic bundle, loaded when charts are opened)
 
+### Reporting
+
+- ReportLab for downloadable PDF assessments
+
 ### Version Control
 
 - Git
@@ -199,7 +203,7 @@ Implemented:
 - Loading, empty, and API-error states, with retry controls where useful
 - A responsive layout for desktop and smaller screens
 
-The dashboard calls the FastAPI endpoints. It keeps anomaly flags separate from quality errors and shows `Not evaluated` when a rule cannot assess the dataset. Downloadable reports are planned for a later phase.
+The dashboard calls the FastAPI endpoints. It keeps anomaly flags separate from quality errors and shows `Not evaluated` when a rule cannot assess the dataset.
 
 ### Phase 9 — Interactive Visualizations ✅
 
@@ -212,6 +216,18 @@ Implemented:
 - `GET /datasets/{dataset_id}/visualizations?column=...` to calculate compact chart data from one stored CSV column
 
 Chart counts are drawn from the current dataset. Method and field anomaly counts can overlap; the separate distinct-row total counts each flagged row once. Identifiers and free text are not plotted as measurements.
+
+### Phase 10 — Report Generation ✅
+
+Implemented:
+
+- `GET /datasets/{dataset_id}/report` to download an A4 PDF assessment
+- A working **Download PDF report** button on the dataset overview
+- Overall and dimension scores, evaluation status, counted quality findings, and a column profile
+- Distinct anomaly-row counts, method evidence, five review examples, and retail cancellation context when available
+- Clear limits for large reports: up to 40 columns, 50 findings, and 30 method/field rows, with truncation stated in the PDF
+
+The report recalculates results from the stored normalized CSV when requested. It does not save analysis in PostgreSQL or treat unusual records as proven errors. PDF generation runs during the request, so large datasets can take several seconds.
 
 ---
 
@@ -256,7 +272,7 @@ Business context used to distinguish legitimate unusual values from potential er
 - [x] Phase 7 — Explainability
 - [x] Phase 8 — React Dashboard
 - [x] Phase 9 — Interactive Visualizations
-- [ ] Phase 10 — Report Generation
+- [x] Phase 10 — Report Generation
 - [ ] Phase 11 — Deployment
 - [ ] Phase 12 — Final Documentation & Polish
 
@@ -312,6 +328,7 @@ Open `http://127.0.0.1:5173`. Keep the backend running at `http://127.0.0.1:8000
 | GET | `/datasets` | Retrieve dataset metadata |
 | GET | `/datasets/{dataset_id}/profile` | Generate a detailed profile for an uploaded dataset |
 | GET | `/datasets/{dataset_id}/quality` | Calculate explainable data-quality scores and issues |
+| GET | `/datasets/{dataset_id}/report` | Download the current quality and anomaly assessment as a PDF |
 | GET | `/datasets/{dataset_id}/visualizations?column=...` | Return bounded histogram, category, or date counts for one stored column |
 | GET | `/datasets/{dataset_id}/anomalies` | Find unusual numeric observations with method evidence and retail context |
 | GET | `/datasets/{dataset_id}/anomalies/{row_number}/explanation` | Explain a specific one-based data row, flagged or not |
