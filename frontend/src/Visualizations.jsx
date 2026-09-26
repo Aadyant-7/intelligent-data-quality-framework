@@ -149,7 +149,7 @@ export default function Visualizations({ datasetId, profileState, profileRetry, 
   return <div className="section-stack">
     <div className="section-intro"><span className="eyebrow">INTERACTIVE VISUALIZATIONS</span><h2>Explore the patterns</h2><p>Charts help you spot patterns; the counts and rule explanations remain the source of truth.</p></div>
     <div className="chart-grid">
-      <ChartPanel eyebrow="QUALITY" title="Quality dimensions" note="Only evaluated dimensions are plotted. A missing bar does not mean a perfect score.">
+      <ChartPanel eyebrow="QUALITY" title="Quality dimensions" note="Completeness includes a deduction when missing cells concentrate in one field. Only evaluated dimensions are plotted; a missing bar does not mean a perfect score.">
         {qualityState.loading || (!quality && !qualityState.error) ? <p className="chart-loading">Loading scores…</p> : qualityState.error ? <div className="chart-error" role="alert">{qualityState.error} <button className="text-button" onClick={qualityRetry}>Try again</button></div> : qualityEntries.length ? <>
           <PlotChart data={horizontalBars(qualityLabels, qualityScores, GREEN, 'points')} layout={{ ...BAR_LAYOUT, xaxis: { title: { text: 'Score / 100' }, range: [0, 100], gridcolor: '#edf2f0' } }} label="Evaluated quality dimension scores" height={270} />
           <ChartValues labels={qualityLabels} counts={qualityScores} label="Score / 100" fractionDigits={2} />

@@ -330,7 +330,7 @@ The response provides an overall score, a grade, four dimension scores, and a li
 
 | Dimension | Weight | What is measured |
 |---|---:|---|
-| Completeness | 30% | The proportion of populated cells, plus missing-value evidence by column |
+| Completeness | 30% | Filled-cell coverage with a capped deduction for missing values concentrated in one column (revised in Section 23) |
 | Uniqueness | 25% | The proportion of rows that are not duplicates |
 | Validity | 25% | Values that violate available business-aware rules |
 | Consistency | 20% | Whether related fields agree with each other |
@@ -351,7 +351,7 @@ Each issue contains its quality dimension, severity, affected-record count, rele
 
 ### Verification
 
-The endpoint was tested against the normalized full Online Retail dataset (dataset ID 8):
+At the original Phase 5 verification, before the later completeness revision, the endpoint was tested against the normalized full Online Retail dataset (dataset ID 8):
 
 | Result | Value |
 |---|---:|
@@ -636,10 +636,31 @@ The review queue is intentionally ordered by descending number of anomaly signal
 
 ## 22. Final Score Interpretation Review (2026-09-27)
 
-The existing overall score is a weighted average of available rule scores. Completeness counts missing cells across all columns equally; it does not assign a special weight to `CustomerID`. The full retail dataset therefore retains its 95.47 rule score despite 135,080 missing CustomerIDs (24.93%). This is a high-severity finding under the current percentage thresholds, and whether it blocks an actual task depends on how that task uses customer identity. Changing the numeric score or weights without a defined use case would assert unsupported business importance, so the formula remains stable.
+At this review, the overall score was a weighted average of available rule scores. Completeness counted missing cells across all columns equally and did not assign a special weight to `CustomerID`. The full retail dataset therefore retained its 95.47 rule score despite 135,080 missing CustomerIDs (24.93%). This was a high-severity finding, but whether it blocks an actual task depends on how that task uses customer identity. The subsequent generic scoring revision in Section 23 addresses concentrated missingness without assigning importance to a named field.
 
 The dashboard now labels the number as a rule score, shows high-severity findings beside it, and orders findings by severity and affected count. It distinguishes base weights from effective weights after excluding unevaluated dimensions. Retail validity requires `InvoiceNo`, `Quantity`, and `UnitPrice`; retail consistency requires `StockCode` and `Description`. When these fields are absent, the API returns `Not evaluated` plus the missing-column reason, and the UI shows no zero-score bar. For Titanic, both retail checks are excluded; its score combines only completeness and uniqueness. The PDF now uses the same score caveat, high-severity callout, and reason for excluded checks.
 
 The anomaly panel explains the mechanics: IQR and Z-score derive bounds from the selected data; Isolation Forest fits on up to 10,000 complete numeric rows of the selected dataset when enough data exists, with a fixed random seed, and scores the data on request. There is no persistent model trained on other users' datasets or external language-model call. Row evidence and suggested next steps are assembled by explicit statistical and retail interpretation rules. An Isolation Forest flag identifies an unusual numeric combination, not the exact field responsible or a proven error.
 
 Verification: Python compilation, 36 backend tests, and the frontend production build passed. The local API returned the retail full score of 95.47 and its high-severity CustomerID finding, Titanic's two missing-column explanations, and HTTP 404 for an invalid dataset ID. The full retail PDF endpoint returned HTTP 200 and `application/pdf`. The local browser showed the retail warning beside the score, Titanic's excluded retail checks, and the new anomaly-method descriptions. The existing Plotly bundle size warning remains.
+
+## 23. Concentration-Aware Completeness (2026-09-27)
+
+The earlier completeness score counted all cells equally. In an eight-column retail dataset, almost one-quarter of `CustomerID` values could be blank while filled values in the other seven columns kept completeness near 97. The user correctly identified that the overall rule score underrepresented this concentrated gap. The new completeness calculation remains generic and uses no column-name preference:
+
+- `B = 100 × (1 − missing cells / total cells)` is the filled-cell baseline.
+- `W` is the highest missing percentage among individual columns; `A = 100 − B` is the average missing percentage across all cells.
+- `P = min(15, 0.60 × max(0, W − A))` is the concentration deduction in completeness points.
+- `Completeness = max(0, B − P)`. The existing dimension weights and grade thresholds then calculate the overall score as before, excluding unevaluated retail dimensions.
+
+The 60% factor gives a substantially incomplete column meaningful influence. The 15-point cap prevents one optional, nearly empty column from overwhelming the entire assessment. These are project policy choices, not statistical definitions of correctness. The score uses percentages rather than absolute missing counts so otherwise identical small and large datasets remain comparable; the issue evidence still shows the number of affected rows. The formula, worst column, baseline, and deduction are exposed in the API, Quality view, and PDF. No source dataset or saved analysis result was modified.
+
+| Local dataset | Previous overall | Revised overall | Revised completeness | Worst column | Extra completeness deduction |
+|---|---:|---:|---:|---|---:|
+| Full Online Retail (541,909 rows) | 95.47 | **91.55** (`Good`) | 83.78 | `CustomerID` 24.93% missing | 13.07 |
+| Online Retail sample (5,000 rows) | 98.61 | **94.81** (`Good`) | 84.32 | `CustomerID` 24.10% missing | 12.63 |
+| Titanic (891 rows) | 95.58 | **87.40** (`Good`) | 76.90 | `Cabin` 77.10% missing | 15.00 (cap) |
+
+Titanic demonstrates why the cap matters: a largely blank optional field now lowers the score, but it does not automatically define the entire file as unusable. A row with an unusual price or quantity is still an anomaly investigation lead, not a proven error and not a new quality-score penalty. Retail returns remain possible legitimate transactions.
+
+Verification: Python compilation, 38 backend tests, and the frontend production build passed. Tests cover concentrated missingness, the penalty cap, generic datasets, and earlier regressions. The running local API returned the revised scores above; an invalid dataset ID returned HTTP 404; the full retail PDF returned HTTP 200 with `application/pdf`. The local dashboard showed 91.55 and the precise CustomerID deduction after reselecting the dataset. The public Render backend was not redeployed during this change, so its displayed score may still follow the previous formula until that service is updated. Historical phase results earlier in this document are retained as dated verification records.

@@ -102,6 +102,33 @@ class PriorPhaseRegressionTests(unittest.TestCase):
         self.assertIn("Retail consistency requires", result["dimensions"]["consistency"]["reason"])
         self.assertEqual(result["overall_quality_score"], 81.82)
 
+    def test_completeness_penalizes_missing_values_concentrated_in_one_column(self):
+        pd.DataFrame({"Order": [1, 2, 3, 4], "CustomerID": [10, 11, 12, None]}).to_csv(
+            self.csv_path, index=False
+        )
+
+        result = assess_dataset_quality(self.dataset)
+        completeness = result["dimensions"]["completeness"]
+
+        self.assertEqual(completeness["cell_coverage_score"], 87.5)
+        self.assertEqual(completeness["worst_column"], "CustomerID")
+        self.assertEqual(completeness["worst_column_missing_percentage"], 25.0)
+        self.assertEqual(completeness["concentration_penalty"], 7.5)
+        self.assertEqual(completeness["score"], 80.0)
+        self.assertEqual(result["overall_quality_score"], 89.09)
+
+    def test_completeness_concentration_penalty_has_a_cap(self):
+        pd.DataFrame({"Order": [1, 2, 3, 4], "OptionalField": [None] * 4}).to_csv(
+            self.csv_path, index=False
+        )
+
+        completeness = assess_dataset_quality(self.dataset)["dimensions"]["completeness"]
+
+        self.assertEqual(completeness["cell_coverage_score"], 50.0)
+        self.assertEqual(completeness["worst_column_missing_percentage"], 100.0)
+        self.assertEqual(completeness["concentration_penalty"], 15.0)
+        self.assertEqual(completeness["score"], 35.0)
+
     def test_empty_dataset_is_not_scored(self):
         pd.DataFrame(columns=["Quantity", "UnitPrice"]).to_csv(self.csv_path, index=False)
 

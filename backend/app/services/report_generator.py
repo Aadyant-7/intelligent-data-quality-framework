@@ -199,6 +199,16 @@ def render_report_pdf(
         "The overall score uses only evaluated dimensions and renormalizes their weights. "
         "A dimension marked Not evaluated is not treated as perfect.", styles["small"],
     ))
+    completeness = quality["dimensions"]["completeness"]
+    if completeness.get("worst_column"):
+        story.append(Paragraph(
+            f"Completeness starts from {_number(completeness['cell_coverage_score'], 2)} / 100 "
+            f"filled-cell coverage. {_text(completeness['worst_column'])} is missing in "
+            f"{_number(completeness['worst_column_missing_percentage'], 2)}% of rows, "
+            f"so concentrated missingness deducts {_number(completeness['concentration_penalty'], 2)} "
+            "points from the completeness dimension (maximum 15).",
+            styles["small"],
+        ))
 
     story.append(Paragraph("Findings and review items", styles["heading"]))
     issues = sorted(quality["issues"], key=lambda issue: (

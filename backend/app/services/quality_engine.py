@@ -16,6 +16,8 @@ QUALITY_WEIGHTS = {
     "validity": 0.25,
     "consistency": 0.20,
 }
+COMPLETENESS_CONCENTRATION_WEIGHT = 0.60
+MAX_COMPLETENESS_CONCENTRATION_PENALTY = 15.0
 
 
 def assess_dataset_quality(dataset: Dataset) -> dict[str, Any]:
@@ -80,10 +82,22 @@ def _assess_completeness(
     dataframe: pd.DataFrame, issues: list[dict[str, Any]]
 ) -> dict[str, Any]:
     total_cells = dataframe.shape[0] * dataframe.shape[1]
-    missing_values = int(dataframe.isna().sum().sum())
-    score = round(100 * (1 - missing_values / total_cells), 2) if total_cells else 100.0
+    missing_by_column = dataframe.isna().sum()
+    missing_values = int(missing_by_column.sum())
+    cell_coverage_score = 100 * (1 - missing_values / total_cells) if total_cells else 100.0
+    worst_column = str(missing_by_column.idxmax()) if missing_values else None
+    worst_missing_percentage = (
+        100 * int(missing_by_column.max()) / len(dataframe) if missing_values else 0.0
+    )
+    average_missing_percentage = 100 - cell_coverage_score
+    concentration_penalty = min(
+        MAX_COMPLETENESS_CONCENTRATION_PENALTY,
+        COMPLETENESS_CONCENTRATION_WEIGHT
+        * max(0.0, worst_missing_percentage - average_missing_percentage),
+    )
+    score = round(max(0.0, cell_coverage_score - concentration_penalty), 2)
 
-    for column_name, missing_count in dataframe.isna().sum().items():
+    for column_name, missing_count in missing_by_column.items():
         if missing_count:
             percentage = round(100 * missing_count / len(dataframe), 2) if len(dataframe) else 0
             issues.append({
@@ -94,7 +108,18 @@ def _assess_completeness(
                 "message": f"{column_name} is missing in {percentage}% of records.",
             })
 
-    return {"score": score, "missing_values": missing_values}
+    return {
+        "score": score,
+        "missing_values": missing_values,
+        "cell_coverage_score": round(cell_coverage_score, 2),
+        "worst_column": worst_column,
+        "worst_column_missing_percentage": round(worst_missing_percentage, 2),
+        "concentration_penalty": round(concentration_penalty, 2),
+        "reason": (
+            "Concentrated missing values reduce the score by up to 15 points."
+            if concentration_penalty else "No extra deduction for concentrated missing values."
+        ),
+    }
 
 
 def _assess_uniqueness(
