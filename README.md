@@ -71,9 +71,9 @@ This project aims to build an automated framework that can:
 - React
 - Vite
 
-### Visualization (planned)
+### Visualization
 
-- Plotly
+- Plotly.js (basic bundle, loaded when charts are opened)
 
 ### Version Control
 
@@ -199,7 +199,19 @@ Implemented:
 - Loading, empty, and API-error states, with retry controls where useful
 - A responsive layout for desktop and smaller screens
 
-The dashboard calls the existing FastAPI endpoints. It keeps anomaly flags separate from quality errors and shows `Not evaluated` when a rule cannot assess the dataset. Interactive charts and downloadable reports are planned for later phases.
+The dashboard calls the FastAPI endpoints. It keeps anomaly flags separate from quality errors and shows `Not evaluated` when a rule cannot assess the dataset. Downloadable reports are planned for a later phase.
+
+### Phase 9 — Interactive Visualizations ✅
+
+Implemented:
+
+- Interactive Plotly charts for evaluated quality dimensions, missing values, and anomaly signals
+- A field explorer for numeric distributions, leading categories, and date activity
+- Numeric full-range and typical-range views, with the excluded tail count stated clearly
+- Hover, zoom, and reset controls, plus a count table alongside each chart
+- `GET /datasets/{dataset_id}/visualizations?column=...` to calculate compact chart data from one stored CSV column
+
+Chart counts are drawn from the current dataset. Method and field anomaly counts can overlap; the separate distinct-row total counts each flagged row once. Identifiers and free text are not plotted as measurements.
 
 ---
 
@@ -243,7 +255,7 @@ Business context used to distinguish legitimate unusual values from potential er
 - [x] Phase 6 — Anomaly Detection Engine
 - [x] Phase 7 — Explainability
 - [x] Phase 8 — React Dashboard
-- [ ] Phase 9 — Interactive Visualizations
+- [x] Phase 9 — Interactive Visualizations
 - [ ] Phase 10 — Report Generation
 - [ ] Phase 11 — Deployment
 - [ ] Phase 12 — Final Documentation & Polish
@@ -300,6 +312,7 @@ Open `http://127.0.0.1:5173`. Keep the backend running at `http://127.0.0.1:8000
 | GET | `/datasets` | Retrieve dataset metadata |
 | GET | `/datasets/{dataset_id}/profile` | Generate a detailed profile for an uploaded dataset |
 | GET | `/datasets/{dataset_id}/quality` | Calculate explainable data-quality scores and issues |
+| GET | `/datasets/{dataset_id}/visualizations?column=...` | Return bounded histogram, category, or date counts for one stored column |
 | GET | `/datasets/{dataset_id}/anomalies` | Find unusual numeric observations with method evidence and retail context |
 | GET | `/datasets/{dataset_id}/anomalies/{row_number}/explanation` | Explain a specific one-based data row, flagged or not |
 

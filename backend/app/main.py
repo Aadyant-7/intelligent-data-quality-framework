@@ -13,6 +13,7 @@ from app.services.anomaly_engine import (
 from app.services.data_profiler import profile_dataset
 from app.services.dataset_ingestion import ingest_dataset
 from app.services.quality_engine import assess_dataset_quality
+from app.services.visualization_engine import visualize_dataset_column
 
 app = FastAPI()
 
@@ -67,6 +68,19 @@ def get_dataset_quality(dataset_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Dataset not found.")
 
     return assess_dataset_quality(dataset)
+
+
+@app.get("/datasets/{dataset_id}/visualizations")
+def get_dataset_visualization(
+    dataset_id: int,
+    column: str = Query(min_length=1),
+    db: Session = Depends(get_db),
+):
+    dataset = db.get(Dataset, dataset_id)
+    if dataset is None:
+        raise HTTPException(status_code=404, detail="Dataset not found.")
+
+    return visualize_dataset_column(dataset, column)
 
 
 @app.get("/datasets/{dataset_id}/anomalies")

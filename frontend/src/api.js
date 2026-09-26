@@ -36,6 +36,8 @@ export const api = {
   datasets: (signal) => request('/datasets', { signal }),
   profile: (id, signal) => request(`/datasets/${encodeURIComponent(id)}/profile`, { signal }),
   quality: (id, signal) => request(`/datasets/${encodeURIComponent(id)}/quality`, { signal }),
+  visualization: (id, column, signal) =>
+    request(`/datasets/${encodeURIComponent(id)}/visualizations?column=${encodeURIComponent(column)}`, { signal }),
   anomalies: (id, offset = 0, limit = 20, signal) =>
     request(`/datasets/${encodeURIComponent(id)}/anomalies?offset=${offset}&limit=${limit}`, { signal }),
   explanation: (id, rowNumber, signal) =>

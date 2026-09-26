@@ -201,11 +201,31 @@ details summary { color: #198774; cursor: pointer; font-size: 11px; font-weight:
 .evidence-item p { color: #426166; font-size: 11px; margin: 9px 0 5px; }
 .evidence-item small { color: #829797; font-size: 10px; }
 
+.chart-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.chart-panel { overflow: hidden; }
+.chart-panel .panel-head { margin-bottom: 8px; }
+.chart-note, .chart-caption { color: #70888b; font-size: 11px; line-height: 1.55; margin: 0 0 14px; }
+.chart-caption { margin: 10px 0; }
+.chart-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 18px 0; }
+.chart-controls label { color: #45676c; font-size: 11px; font-weight: 750; }
+.chart-controls select { border: 1px solid #cbded8; border-radius: 8px; padding: 9px 11px; min-width: 190px; max-width: 100%; background: #fff; color: #31535b; font: inherit; font-size: 11px; }
+.chart-toggle { display: flex; padding: 3px; gap: 3px; background: #eef5f2; border-radius: 8px; }
+.chart-toggle button { border: 0; border-radius: 6px; padding: 7px 10px; background: transparent; color: #64817f; font-size: 11px; font-weight: 750; }
+.chart-toggle button.active { background: #fff; color: #176c5b; box-shadow: 0 1px 4px rgba(24, 62, 59, .1); }
+.plot-chart { width: 100%; min-width: 0; }
+.chart-values { margin-top: 8px; border-top: 1px solid #edf1f0; padding-top: 10px; }
+.chart-values summary { margin-bottom: 10px; }
+.chart-values table { min-width: 0; }
+.chart-values th, .chart-values td { padding: 9px 12px; }
+.chart-loading, .chart-empty, .chart-error { color: #789093; font-size: 12px; padding: 25px 0; line-height: 1.55; }
+.chart-error { color: #a05743; }
+
 @media (max-width: 1180px) {
   .sidebar { width: 260px; flex-basis: 260px; }
   .stats-grid, .quality-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .stats-grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .overview-grid { grid-template-columns: 1fr; }
+  .chart-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 760px) {

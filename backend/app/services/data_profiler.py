@@ -39,7 +39,7 @@ def profile_dataset(dataset: Dataset) -> dict[str, Any]:
 
 def _profile_column(column_name: str, series: pd.Series, rows_count: int) -> dict[str, Any]:
     missing_count = int(series.isna().sum())
-    logical_type = _infer_logical_type(column_name, series)
+    logical_type = infer_logical_type(column_name, series)
     profile: dict[str, Any] = {
         "name": column_name,
         "data_type": str(series.dtype),
@@ -73,7 +73,7 @@ def _profile_column(column_name: str, series: pd.Series, rows_count: int) -> dic
     return profile
 
 
-def _infer_logical_type(column_name: str, series: pd.Series) -> str:
+def infer_logical_type(column_name: str, series: pd.Series) -> str:
     """Infer a useful semantic type without changing the original data."""
     if is_identifier_column(column_name):
         return "identifier"

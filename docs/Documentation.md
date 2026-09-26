@@ -10,7 +10,7 @@ The project is built around real public data rather than fabricated examples. It
 
 ## 2. Current Status
 
-**Completed through Phase 8 — React Dashboard**
+**Completed through Phase 9 — Interactive Visualizations**
 
 The system can currently:
 
@@ -27,8 +27,9 @@ The system can currently:
 - Flag unusual numeric observations with statistical and Isolation Forest methods.
 - Explain why a row was flagged and describe relevant retail business context.
 - Browse these results in a local React dashboard, upload datasets, and inspect individual rows.
+- Explore quality, missingness, anomaly signals, and field distributions with interactive charts.
 
-The next phase is **interactive visualizations** for profiles, scores, and anomaly patterns.
+The next phase is **report generation**.
 
 ---
 
@@ -469,11 +470,40 @@ The production build passed and npm's audit found no known vulnerabilities in th
 
 This phase also corrected a backend explanation label from `Z_SCORE` to `Z-score`; backend compilation and all 14 regression tests passed, and the live row explanation showed the corrected wording.
 
-The dashboard is a local development application. It does not yet have charts, downloadable reports, authentication, hosted storage, or deployment. Analysis remains calculated on request by the backend. Dataset IDs above refer only to this local development database.
+The dashboard is a local development application. Downloadable reports, authentication, hosted storage, and deployment remain future work. Analysis remains calculated on request by the backend. Dataset IDs above refer only to this local development database.
 
 ---
 
-## 12. Technology Roles
+## 12. Phase 9 — Interactive Visualizations
+
+### Chart Data and Meaning
+
+The new `GET /datasets/{dataset_id}/visualizations?column=...` endpoint reads one requested column from the normalized CSV through the shared storage-path resolver. It returns compact counts rather than individual rows:
+
+| Field type | Chart data |
+|---|---|
+| Numeric | 24-bin histograms for the full finite range and a typical range between the 1st and 99th percentiles |
+| Categorical | 12 leading values and a counted `Other categories` group |
+| Datetime | Counts by month, or by year for spans longer than three years |
+| Identifier or free text | `not_evaluated` with a reason |
+
+Missing values and infinite numbers are counted separately from finite numeric values. The typical-range view states how many finite rows lie outside it; those rows remain in the full-range chart. Histogram bins sum to the stated included-row count. An unknown dataset or column, or a missing stored file, returns HTTP 404.
+
+### Dashboard
+
+The **Visualizations** tab uses Plotly.js to show evaluated quality scores, fields with missing values, leading anomaly signals, and a selectable field distribution. Users can hover for values, zoom and reset charts, switch numeric ranges, and open count tables beneath the charts. Plotly's basic bundle is loaded only when a chart is opened. The profile, quality, and anomaly summaries remain the source data for the first three charts; the new endpoint supplies the selected field's distribution.
+
+Quality dimensions without a score are omitted from the score chart and described as unevaluated. Anomaly method/field counts can overlap, so the chart explicitly separates them from the distinct flagged-row total. The charts never label an unusual observation as a proven data-quality error.
+
+### Verification and Limits
+
+Backend compilation and all 20 automated tests passed, including checks for histogram count conservation, categories grouped into `Other`, date buckets, identifier exclusion, missing files, and extremely large finite numbers. On the real 5,000-row retail sample, the Quantity full histogram counted 5,000 rows; its typical-range chart counted 4,906 and reported 94 outside. On the full 541,909-row upload, month buckets and full Quantity bins each summed to 541,909; the typical range counted 531,914 and reported 9,995 outside. A generic four-row dataset also rendered. Unknown IDs and columns returned 404. Browser checks covered numeric, category, and date selection, range switching, chart layout, dataset switching, and phone width.
+
+The endpoint reads one entire column into memory per request, then sends bounded chart data. It is not a streaming or asynchronous analysis service. Chart zoom changes the display; it does not recalculate quality or anomaly rules. The Plotly chart bundle is a separate download of about 381 kB compressed. Report export belongs to Phase 10.
+
+---
+
+## 13. Technology Roles
 
 | Technology | Role in the project |
 |---|---|
@@ -487,11 +517,12 @@ The dashboard is a local development application. It does not yet have charts, d
 | OpenPyXL | Excel `.xlsx` support for Pandas |
 | NumPy and scikit-learn | Numeric anomaly calculations and Isolation Forest |
 | React and Vite | Local dashboard and frontend development/build tooling |
+| Plotly.js | Interactive charts in the dashboard |
 | Git and GitHub | Version control and public project history |
 
 ---
 
-## 13. Roadmap
+## 14. Roadmap
 
 | Phase | Scope | Status |
 |---|---|---|
@@ -503,11 +534,11 @@ The dashboard is a local development application. It does not yet have charts, d
 | 6 | Anomaly detection | Complete |
 | 7 | Explainability | Complete |
 | 8 | React dashboard | Complete |
-| 9 | Interactive visualizations | Planned |
+| 9 | Interactive visualizations | Complete |
 | 10 | Report generation | Planned |
 | 11 | Deployment | Planned |
 | 12 | Final documentation and polish | Planned |
 
-## 14. Next Step
+## 15. Next Step
 
-Phase 9 will add interactive visualizations that make field distributions, quality dimensions, and anomaly patterns easier to explore without changing the meaning of the underlying evidence.
+Phase 10 will turn the assessed evidence into a downloadable report. It should retain scores, counted findings, anomaly caveats, and the distinction between assessed and unevaluated checks.

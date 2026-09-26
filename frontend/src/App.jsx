@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { api } from './api'
 import { displayValue, formatDate, formatNumber, titleCase } from './format'
+import Visualizations from './Visualizations'
 
 const TABS = [
   { id: 'overview', label: 'Overview' },
   { id: 'profile', label: 'Profile' },
   { id: 'quality', label: 'Quality' },
   { id: 'anomalies', label: 'Anomalies' },
+  { id: 'visualizations', label: 'Visualizations' },
 ]
 
 function LoadingBlock({ label = 'Loading data…' }) {
@@ -208,6 +210,7 @@ export default function App() {
   const [qualityReload, setQualityReload] = useState(0)
   const [profileState, setProfileState] = useState({ data: null, loading: false, error: '' })
   const [anomalyState, setAnomalyState] = useState({ data: null, loading: false, error: '' })
+  const [visualAnomalyState, setVisualAnomalyState] = useState({ data: null, loading: false, error: '' })
   const [pageOffset, setPageOffset] = useState(0)
   const [rowInput, setRowInput] = useState('')
   const [explanation, setExplanation] = useState(null)
@@ -215,8 +218,10 @@ export default function App() {
   const [explanationError, setExplanationError] = useState('')
   const [profileReload, setProfileReload] = useState(0)
   const [anomalyReload, setAnomalyReload] = useState(0)
+  const [visualAnomalyReload, setVisualAnomalyReload] = useState(0)
   const profileCache = useRef(new Map())
   const anomalyCache = useRef(new Map())
+  const visualAnomalyCache = useRef(new Map())
   const explanationController = useRef(null)
 
   useEffect(() => {
@@ -248,7 +253,7 @@ export default function App() {
   }, [selectedId, qualityReload])
 
   useEffect(() => {
-    if (selectedId === null || activeTab !== 'profile') return
+    if (selectedId === null || !['profile', 'visualizations'].includes(activeTab)) return
     const key = `${selectedId}:${profileReload}`
     const cached = profileCache.current.get(key)
     if (cached) { setProfileState({ data: cached, loading: false, error: '' }); return }
@@ -274,6 +279,22 @@ export default function App() {
     }).catch((error) => { if (error.name !== 'AbortError') setAnomalyState({ data: null, loading: false, error: error.message }) })
     return () => controller.abort()
   }, [selectedId, activeTab, pageOffset, anomalyReload])
+
+  useEffect(() => {
+    if (selectedId === null || activeTab !== 'visualizations') return
+    const key = `${selectedId}:${visualAnomalyReload}`
+    const cached = visualAnomalyCache.current.get(key)
+    if (cached) { setVisualAnomalyState({ data: cached, loading: false, error: '' }); return }
+    const controller = new AbortController()
+    setVisualAnomalyState({ data: null, loading: true, error: '' })
+    api.anomalies(selectedId, 0, 1, controller.signal).then((data) => {
+      visualAnomalyCache.current.set(key, data)
+      setVisualAnomalyState({ data, loading: false, error: '' })
+    }).catch((error) => {
+      if (error.name !== 'AbortError') setVisualAnomalyState({ data: null, loading: false, error: error.message })
+    })
+    return () => controller.abort()
+  }, [selectedId, activeTab, visualAnomalyReload])
 
   const selectedDataset = useMemo(() => datasets.find((item) => item.id === selectedId), [datasets, selectedId])
 
@@ -345,6 +366,7 @@ export default function App() {
         {activeTab === 'profile' && <Profile state={profileState} retry={() => setProfileReload((value) => value + 1)} />}
         {activeTab === 'quality' && <Quality state={qualityState} retry={() => setQualityReload((value) => value + 1)} />}
         {activeTab === 'anomalies' && <Anomalies state={anomalyState} retry={() => setAnomalyReload((value) => value + 1)} onPage={(offset) => { setPageOffset(offset); setExplanation(null); setExplanationError('') }} explanation={explanation} explanationLoading={explanationLoading} explanationError={explanationError} onExplain={explainRow} onCloseExplanation={() => setExplanation(null)} rowInput={rowInput} setRowInput={setRowInput} onLookup={handleLookup} />}
+        {activeTab === 'visualizations' && <Visualizations datasetId={selectedId} profileState={profileState} profileRetry={() => setProfileReload((value) => value + 1)} qualityState={qualityState} anomalyState={visualAnomalyState} anomalyRetry={() => setVisualAnomalyReload((value) => value + 1)} />}
       </>}
       <footer className="main-footer">Anomaly flags invite review. They are not automatic data-quality errors.</footer>
     </main>
