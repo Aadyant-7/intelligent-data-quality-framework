@@ -84,12 +84,14 @@ This project aims to build an automated framework that can:
 - Git
 - GitHub
 
-### Deployment (planned)
+### Deployment preparation
 
-- Vercel
-- Render
-- Neon PostgreSQL
-- Free-tier infrastructure where practical
+- Vercel configuration for the React frontend
+- Render Blueprint for a sample-only FastAPI service
+- Neon PostgreSQL as the intended hosted metadata database
+- GitHub Actions build and test checks
+
+The public demo is prepared but has no live URL yet. Provider accounts and hosted configuration are still required.
 
 ---
 
@@ -229,6 +231,14 @@ Implemented:
 
 The report recalculates results from the stored normalized CSV when requested. It does not save analysis in PostgreSQL or treat unusual records as proven errors. PDF generation runs during the request, so large datasets can take several seconds.
 
+### Phase 11 — Deployment preparation (in progress)
+
+The repository now has a free-hosting setup for a **read-only public sample**. In hosted demo mode, startup restores the tracked 5,000-row retail sample, the API lists only that sample, and both upload and manual metadata creation are rejected. The website labels this mode and hides its upload form. Local development keeps the full CSV and `.xlsx` upload workflow.
+
+`render.yaml` describes the free backend service, and `frontend/vercel.json` supports the Vite single-page frontend. Hosted secrets and the allowed frontend origin are configured in provider settings, not in Git. `/health` is a lightweight hosting check; `/ready` also checks the database on demand. A GitHub Actions workflow checks backend tests and a demo frontend build.
+
+**Deployment status:** configuration and local checks are complete; a live Render, Vercel, and Neon deployment is pending provider accounts. No live service has been verified. The free backend filesystem is temporary, which is why the hosted demo does not accept user uploads.
+
 ---
 
 ## Assessment Capabilities
@@ -273,7 +283,7 @@ Business context used to distinguish legitimate unusual values from potential er
 - [x] Phase 8 — React Dashboard
 - [x] Phase 9 — Interactive Visualizations
 - [x] Phase 10 — Report Generation
-- [ ] Phase 11 — Deployment
+- [ ] Phase 11 — Deployment (configuration ready; live launch pending)
 - [ ] Phase 12 — Final Documentation & Polish
 
 ---
@@ -323,6 +333,8 @@ Open `http://127.0.0.1:5173`. Keep the backend running at `http://127.0.0.1:8000
 | Method | Endpoint | Purpose |
 |---|---|---|
 | GET | `/` | Backend health/welcome response |
+| GET | `/health` | Lightweight hosting health check |
+| GET | `/ready` | Check the database and sample availability on demand |
 | POST | `/datasets` | Store dataset metadata |
 | POST | `/datasets/upload` | Upload a CSV or Excel file and automatically create normalized dataset metadata |
 | GET | `/datasets` | Retrieve dataset metadata |

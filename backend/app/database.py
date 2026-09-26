@@ -1,13 +1,14 @@
 import os
 from dotenv import load_dotenv
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from app.models import Base
 
 load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL must be configured before the API starts.")
 
-engine = create_engine(DATABASE_URL)
+engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def get_db():
@@ -17,13 +18,3 @@ def get_db():
         yield db
     finally:
         db.close()
-
-try:
-    with engine.connect() as connection:
-        connection.execute(text("SELECT 1"))
-    print("Database connected successfully")
-except Exception as e:
-    print(f"Database connection failed: {e}")
-
-Base.metadata.create_all(bind=engine)
-print("Database tables created successfully")

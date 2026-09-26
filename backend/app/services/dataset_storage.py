@@ -1,11 +1,12 @@
 """Shared local storage helpers for normalized datasets."""
 
+import os
 from pathlib import Path
 
 from fastapi import HTTPException
 
 
-UPLOAD_DIRECTORY = Path(__file__).resolve().parents[2] / "uploads"
+UPLOAD_DIRECTORY = Path(os.getenv("UPLOAD_DIRECTORY", Path(__file__).resolve().parents[2] / "uploads"))
 
 
 def resolve_dataset_path(stored_path: str) -> Path:

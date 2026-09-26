@@ -10,6 +10,7 @@ const TABS = [
   { id: 'anomalies', label: 'Anomalies' },
   { id: 'visualizations', label: 'Visualizations' },
 ]
+const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true'
 
 function LoadingBlock({ label = 'Loading data…' }) {
   return <div className="loading-block" role="status"><span className="spinner" />{label}</div>
@@ -47,7 +48,7 @@ function Sidebar({ datasets, selectedId, onSelect, loading, error, reload, file,
     <aside className="sidebar">
       <div className="brand"><div className="brand-mark">DQ</div><div><strong>Data Quality</strong><span>Studio</span></div></div>
       <div className="sidebar-section-label">WORKSPACE</div>
-      <div className="workspace-name"><span className="workspace-dot" /> Local analysis <span className="workspace-chevron">⌄</span></div>
+      <div className="workspace-name"><span className="workspace-dot" /> {DEMO_MODE ? 'Public sample' : 'Local analysis'} <span className="workspace-chevron">⌄</span></div>
 
       <div className="sidebar-heading"><span>Datasets</span><span className="count-pill">{datasets.length}</span></div>
       <label className="search-wrap">
@@ -73,7 +74,7 @@ function Sidebar({ datasets, selectedId, onSelect, loading, error, reload, file,
         ))}
       </div>
 
-      <form className="upload-card" onSubmit={onUpload}>
+      {DEMO_MODE ? <div className="sidebar-message demo-note">Public sample demo. Uploads are available when you run the project locally.</div> : <form className="upload-card" onSubmit={onUpload}>
         <span className="upload-symbol" aria-hidden="true">↥</span>
         <strong>Add a dataset</strong>
         <p>CSV or Excel (.xlsx). Your file stays on the local backend.</p>
@@ -83,7 +84,7 @@ function Sidebar({ datasets, selectedId, onSelect, loading, error, reload, file,
         </label>
         <button className="button button-primary upload-button" type="submit" disabled={!file || uploading}>{uploading ? 'Uploading…' : 'Upload dataset'}</button>
         {uploadError && <p className="upload-error" role="alert">{uploadError}</p>}
-      </form>
+      </form>}
       <div className="sidebar-footer">Structured data, clearer decisions.</div>
     </aside>
   )
@@ -102,7 +103,7 @@ function Overview({ dataset, qualityState, onNavigate, onReport, reporting, repo
         <StatCard label="ROWS" value={formatNumber(dataset.rows_count, 0)} detail="Stored records" />
         <StatCard label="COLUMNS" value={formatNumber(dataset.columns_count, 0)} detail="Detected fields" />
         <StatCard label="QUALITY SCORE" value={quality ? formatNumber(quality.overall_quality_score) : qualityState.loading ? '…' : '—'} detail={quality ? titleCase(quality.quality_grade) : 'From available checks'} tone="stat-emphasis" />
-        <StatCard label="UPLOADED" value={formatDate(dataset.uploaded_at)} detail="Local storage" />
+        <StatCard label={DEMO_MODE ? 'SAMPLE READY' : 'UPLOADED'} value={formatDate(dataset.uploaded_at)} detail={DEMO_MODE ? 'Public reference data' : 'Local storage'} />
       </div>
       {qualityState.error && <ErrorBlock message={qualityState.error} />}
       <div className="overview-grid">
@@ -383,7 +384,7 @@ export default function App() {
   return <div className="app-shell">
     <Sidebar datasets={datasets} selectedId={selectedId} onSelect={chooseDataset} loading={listLoading} error={listError} reload={() => setListReload((value) => value + 1)} file={file} setFile={setFile} uploading={uploading} uploadError={uploadError} onUpload={handleUpload} search={search} setSearch={setSearch} />
     <main className="main-content">
-      <header className="topbar"><div><span className="eyebrow">INTELLIGENT DATA QUALITY FRAMEWORK</span><h1>Make sense of your data.</h1><p>Profile structure, measure quality, and investigate unusual records.</p></div><div className="topbar-status"><span className="status-dot" /> Local workspace</div></header>
+      <header className="topbar"><div><span className="eyebrow">INTELLIGENT DATA QUALITY FRAMEWORK</span><h1>Make sense of your data.</h1><p>Profile structure, measure quality, and investigate unusual records.</p></div><div className="topbar-status"><span className="status-dot" /> {DEMO_MODE ? 'Public sample demo' : 'Local workspace'}</div></header>
       {notice && <div className="success-notice" role="status">✓ {notice}<button onClick={() => setNotice('')} aria-label="Dismiss notification">×</button></div>}
       {!selectedDataset ? listLoading ? <LoadingBlock label="Opening workspace…" /> : listError ? <ErrorBlock message={listError} retry={() => setListReload((value) => value + 1)} /> : <EmptyBlock title="Your workspace is ready">Upload a CSV or Excel dataset to start exploring its quality.</EmptyBlock> : <>
         <nav className="tabs" aria-label="Dataset sections">{TABS.map((tab) => <button key={tab.id} className={activeTab === tab.id ? 'active' : ''} onClick={() => setActiveTab(tab.id)} aria-current={activeTab === tab.id ? 'page' : undefined}>{tab.label}</button>)}</nav>

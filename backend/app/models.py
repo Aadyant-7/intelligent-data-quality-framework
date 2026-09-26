@@ -1,10 +1,15 @@
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy import Column, Integer, String, DateTime
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class Base(DeclarativeBase):
     pass
+
+
+def utc_now_naive() -> datetime:
+    """Keep the existing timestamp column type while avoiding deprecated utcnow()."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class Dataset(Base):
@@ -20,4 +25,4 @@ class Dataset(Base):
 
     columns_count = Column(Integer)
 
-    uploaded_at = Column(DateTime, default=datetime.utcnow)
+    uploaded_at = Column(DateTime, default=utc_now_naive)
