@@ -59,18 +59,18 @@ This project aims to build an automated framework that can:
 - PostgreSQL
 - SQLAlchemy
 
-### Machine Learning / Statistics
+### Anomaly Detection
 
 - Scikit-learn
 - Z-score
 - IQR
 - Isolation Forest
 
-### Frontend
+### Frontend (planned)
 
 - React
 
-### Visualization
+### Visualization (planned)
 
 - Plotly
 
@@ -79,7 +79,7 @@ This project aims to build an automated framework that can:
 - Git
 - GitHub
 
-### Deployment
+### Deployment (planned)
 
 - Vercel
 - Render
@@ -163,11 +163,24 @@ Implemented:
 - Context-aware Online Retail checks: cancellation-style invoices, negative prices, zero-price review, and `StockCode`/description mismatches
 - Shared storage-path validation used by profiling and quality services
 
+### Phase 6 — Anomaly Detection Engine ✅
+
+Implemented:
+
+- `GET /datasets/{dataset_id}/anomalies` for numeric anomaly detection on the stored CSV
+- IQR and Z-score checks for unusual values in individual numeric columns
+- Isolation Forest for unusual combinations of numeric values, when enough data is available
+- Counts and sample rows showing the methods that flagged each observation
+- Retail context for flagged negative quantities, including cancellation-style invoices
+- Clear `not_evaluated` results when a method lacks enough usable data
+
+The endpoint flags observations for investigation; it does not change the uploaded file or call every anomaly a data-quality error. It returns up to 20 example rows. The count covers all flagged rows, with rows flagged by multiple methods counted once.
+
 ---
 
-## Data Quality Dimensions
+## Assessment Capabilities
 
-The framework will initially evaluate:
+Quality scoring uses the first four dimensions below. Anomaly detection is a separate analysis:
 
 ### Completeness
 
@@ -202,13 +215,13 @@ Business context used to distinguish legitimate unusual values from potential er
 - [x] Phase 3 — Dataset Ingestion
 - [x] Phase 4 — Data Profiling Engine
 - [x] Phase 5 — Data Quality Engine
-- [ ] Phase 6 — Anomaly Detection Engine
+- [x] Phase 6 — Anomaly Detection Engine
 - [ ] Phase 7 — Explainability
 - [ ] Phase 8 — React Dashboard
 - [ ] Phase 9 — Interactive Visualizations
 - [ ] Phase 10 — Report Generation
 - [ ] Phase 11 — Deployment
-- [ ] Phase 12 — Documentation & Interview Preparation
+- [ ] Phase 12 — Final Documentation & Polish
 
 ---
 
@@ -252,12 +265,13 @@ The local `backend/.env` file must contain the PostgreSQL connection configurati
 | GET | `/datasets` | Retrieve dataset metadata |
 | GET | `/datasets/{dataset_id}/profile` | Generate a detailed profile for an uploaded dataset |
 | GET | `/datasets/{dataset_id}/quality` | Calculate explainable data-quality scores and issues |
+| GET | `/datasets/{dataset_id}/anomalies` | Find unusual numeric observations with method evidence and retail context |
 
 ---
 
 ## Documentation
 
-Detailed project development, technical concepts, decisions, problems encountered, solutions, and interview preparation are maintained in:
+Detailed project development, technical decisions, verification, and limitations are maintained in:
 
     docs/Documentation.md
 

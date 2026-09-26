@@ -10,7 +10,7 @@ The project is built around real public data rather than fabricated examples. It
 
 ## 2. Current Status
 
-**Completed through Phase 5 — Data Quality Engine**
+**Completed through Phase 6 — Anomaly Detection Engine**
 
 The system can currently:
 
@@ -24,8 +24,9 @@ The system can currently:
 - Create a linked PostgreSQL dataset record.
 - Generate a detailed structural profile of an uploaded dataset.
 - Calculate explainable data-quality scores and evidence.
+- Flag unusual numeric observations with statistical and Isolation Forest methods.
 
-The next phase is **Anomaly Detection**, where the system will identify unusual numeric observations without treating every unusual value as an error.
+The next phase is **Explainability**, which will give users deeper guidance on why observations were flagged and how to interpret them.
 
 ---
 
@@ -47,7 +48,7 @@ The current ingestion flow is:
               ↓
     PostgreSQL stores dataset record
               ↓
-    Profiling and quality endpoints inspect the normalized CSV
+    Profiling, quality, and anomaly endpoints inspect the normalized CSV
 
 This design is intentional: every later component can work with CSV data, even when the original upload was an Excel workbook.
 
@@ -368,7 +369,41 @@ Application logic now lives under `backend/app/services/`: ingestion handles fil
 
 ---
 
-## 9. Technology Roles
+## 9. Phase 6 — Anomaly Detection Engine
+
+### Goal and API
+
+Phase 6 adds `GET /datasets/{dataset_id}/anomalies`. It reads the dataset's stored CSV through the shared safe-path resolver and returns unusual numeric rows for review. It does not edit the uploaded data or turn anomaly findings into quality-score penalties. A missing dataset record or stored file returns HTTP 404.
+
+### How Detection Works
+
+The service considers numeric columns but excludes likely identifiers such as `CustomerID`. For each usable numeric field, it applies:
+
+| Method | Rule | Why it is useful |
+|---|---|---|
+| IQR | Outside the first/third quartile by more than 1.5 times the interquartile range | Finds values far from the middle half of a column |
+| Z-score | More than 3 population standard deviations from the mean | Finds values far from the average |
+| Isolation Forest | A reproducible model trained on up to 10,000 complete rows, using 1% contamination | Finds unusual combinations across at least two numeric fields |
+
+IQR and Z-score need at least four finite values and two distinct values. IQR skips a field with zero interquartile range; Z-score skips zero or non-finite standard deviation. Isolation Forest needs at least two varying numeric fields and 20 complete rows. A method that cannot run returns `not_evaluated` with a reason. Missing and infinite numeric values are not used as anomaly evidence.
+
+The response includes each method's evaluation status, inspected fields, flagged counts, and statistical bounds where applicable. `anomaly_rows_count` is the number of distinct rows flagged by at least one method, so overlapping method counts must not be added together. Up to 20 example rows show their one-based data-row number, numeric values, triggering methods, and invoice number when present. Examples with more signals appear first. The examples are a sample of the strongest findings, not the complete anomaly list.
+
+When `InvoiceNo` and `Quantity` exist, the response also counts flagged negative quantities with and without a cancellation-style invoice number. Example rows include a short business-context message for negative quantities. A cancellation-style negative quantity may be a legitimate return; neither this endpoint nor its model proves a data-quality error.
+
+### Verification
+
+The Phase 6 endpoint was exercised against a fresh 5,000-row sample upload (dataset ID 9 in this local database) and the existing full 541,909-row Online Retail upload (local ID 8). On the full upload it returned 97,801 distinct flagged rows, including 2,686 flagged negative-quantity rows with cancellation-style invoices. The IQR checks flagged 58,619 rows for `Quantity` and 39,627 for `UnitPrice`; the Z-score checks flagged 346 and 374 respectively; Isolation Forest flagged 5,520. These counts overlap and are method-specific. The large IQR count reflects the skewed retail data and should be read as a review queue, not an error rate.
+
+An unknown dataset ID returned HTTP 404. Four automated service tests passed for cancellation context, an arbitrary single-numeric-field dataset, a nonnumeric dataset, missing files, and path traversal. Backend compilation passed.
+
+### Current Limits
+
+Detection currently covers numeric fields only. Identifier recognition uses column-name tokens; unusual naming may need user-configurable field roles later. Isolation Forest is fitted on a bounded sample but scores all complete rows, so analysis still reads the whole CSV into memory. Results are calculated on request and are not stored in PostgreSQL. The 1% model contamination and statistical thresholds are initial, documented defaults rather than universal definitions of "bad" data. Phase 7 will improve the explanations and interpretation.
+
+---
+
+## 10. Technology Roles
 
 | Technology | Role in the project |
 |---|---|
@@ -380,11 +415,12 @@ Application logic now lives under `backend/app/services/`: ingestion handles fil
 | Pydantic | API input validation |
 | Pandas | Reading, converting, and profiling datasets |
 | OpenPyXL | Excel `.xlsx` support for Pandas |
+| NumPy and scikit-learn | Numeric anomaly calculations and Isolation Forest |
 | Git and GitHub | Version control and public project history |
 
 ---
 
-## 10. Roadmap
+## 11. Roadmap
 
 | Phase | Scope | Status |
 |---|---|---|
@@ -393,12 +429,12 @@ Application logic now lives under `backend/app/services/`: ingestion handles fil
 | 3 | Dataset ingestion | Complete |
 | 4 | Data profiling engine | Complete |
 | 5 | Data quality engine | Complete |
-| 6 | Anomaly detection | Planned |
+| 6 | Anomaly detection | Complete |
 | 7 | Explainability | Planned |
 | 8–10 | Dashboard, visualizations, and reports | Planned |
 | 11 | Deployment | Planned |
-| 12 | Final documentation | Planned |
+| 12 | Final documentation and polish | Planned |
 
-## 11. Next Step
+## 12. Next Step
 
-Phase 6 will add statistical and machine-learning-assisted anomaly detection, starting with numeric transaction fields while retaining the business context established in Phase 5.
+Phase 7 will expand the explanations attached to anomaly findings so a user can understand the evidence, method limits, and possible business meaning of a flagged row.
