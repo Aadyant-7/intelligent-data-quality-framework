@@ -119,7 +119,12 @@ def _assess_retail_validity(
 ) -> dict[str, Any]:
     required_columns = {"InvoiceNo", "Quantity", "UnitPrice"}
     if not required_columns.issubset(dataframe.columns):
-        return {"score": None, "status": "not_evaluated"}
+        missing = ", ".join(sorted(required_columns - set(dataframe.columns)))
+        return {
+            "score": None,
+            "status": "not_evaluated",
+            "reason": f"Retail validity requires InvoiceNo, Quantity, and UnitPrice. Missing: {missing}.",
+        }
 
     cancellation_mask = dataframe["InvoiceNo"].astype(str).str.startswith("C")
     quantity = pd.to_numeric(dataframe["Quantity"], errors="coerce")
@@ -196,7 +201,12 @@ def _assess_retail_consistency(
 ) -> dict[str, Any]:
     required_columns = {"StockCode", "Description"}
     if not required_columns.issubset(dataframe.columns):
-        return {"score": None, "status": "not_evaluated"}
+        missing = ", ".join(sorted(required_columns - set(dataframe.columns)))
+        return {
+            "score": None,
+            "status": "not_evaluated",
+            "reason": f"Retail consistency requires StockCode and Description. Missing: {missing}.",
+        }
 
     description_counts = (
         dataframe.dropna(subset=["StockCode", "Description"])

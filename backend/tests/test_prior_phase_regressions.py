@@ -98,6 +98,8 @@ class PriorPhaseRegressionTests(unittest.TestCase):
 
         self.assertEqual(result["dimensions"]["validity"]["status"], "not_evaluated")
         self.assertEqual(result["dimensions"]["consistency"]["status"], "not_evaluated")
+        self.assertIn("Retail validity requires", result["dimensions"]["validity"]["reason"])
+        self.assertIn("Retail consistency requires", result["dimensions"]["consistency"]["reason"])
         self.assertEqual(result["overall_quality_score"], 81.82)
 
     def test_empty_dataset_is_not_scored(self):

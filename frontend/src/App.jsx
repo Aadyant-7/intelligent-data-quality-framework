@@ -11,6 +11,22 @@ const TABS = [
   { id: 'visualizations', label: 'Visualizations' },
 ]
 const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true'
+const SEVERITY_ORDER = { high: 0, medium: 1, low: 2, info: 3 }
+const METHOD_DESCRIPTIONS = {
+  iqr: 'Compares each numeric value with the usual middle range.',
+  z_score: 'Checks how far a numeric value is from the average.',
+  isolation_forest: 'Fits this dataset’s numeric rows and flags unusual combinations.',
+}
+
+function dimensionLabel(name) {
+  return name === 'validity' || name === 'consistency' ? `Retail ${name}` : titleCase(name)
+}
+
+function priorityIssues(issues) {
+  return [...issues].sort((a, b) =>
+    (SEVERITY_ORDER[a.severity] ?? 4) - (SEVERITY_ORDER[b.severity] ?? 4)
+      || (b.affected_records ?? 0) - (a.affected_records ?? 0))
+}
 
 function LoadingBlock({ label = 'Loading data…' }) {
   return <div className="loading-block" role="status"><span className="spinner" />{label}</div>
@@ -103,7 +119,8 @@ function Sidebar({ datasets, selectedId, onSelect, loading, error, reload, file,
 
 function Overview({ dataset, qualityState, onNavigate, onRetryQuality, onReport, reporting, reportError }) {
   const quality = qualityState.data
-  const issues = quality?.issues ?? []
+  const issues = priorityIssues(quality?.issues ?? [])
+  const highIssues = issues.filter((issue) => issue.severity === 'high')
   return (
     <div className="section-stack">
       <section className="hero-panel">
@@ -113,9 +130,10 @@ function Overview({ dataset, qualityState, onNavigate, onRetryQuality, onReport,
       <div className="stats-grid">
         <StatCard label="ROWS" value={formatNumber(dataset.rows_count, 0)} detail="Stored records" />
         <StatCard label="COLUMNS" value={formatNumber(dataset.columns_count, 0)} detail="Detected fields" />
-        <StatCard label="QUALITY SCORE" value={quality ? formatNumber(quality.overall_quality_score) : qualityState.loading ? '…' : '—'} detail={quality ? titleCase(quality.quality_grade) : 'From available checks'} tone="stat-emphasis" />
+        <StatCard label="RULE SCORE" value={quality ? formatNumber(quality.overall_quality_score) : qualityState.loading ? '…' : '—'} detail={quality?.quality_grade ? `${titleCase(quality.quality_grade)} by available checks` : 'From available checks'} tone="stat-emphasis" />
         <StatCard label={DEMO_MODE ? 'SAMPLE READY' : 'UPLOADED'} value={formatDate(dataset.uploaded_at)} detail={DEMO_MODE ? 'Public reference data' : 'Local storage'} />
       </div>
+      {highIssues.length > 0 && <div className="score-caution" role="note"><strong>{highIssues.length} high-severity finding{highIssues.length === 1 ? '' : 's'} need review despite the score.</strong> The rule score does not know which fields your task requires. <button className="text-button" onClick={() => onNavigate('quality')}>See findings →</button></div>}
       {qualityState.error && <ErrorBlock message={qualityState.error} retry={onRetryQuality} />}
       <div className="overview-grid">
         <section className="panel">
@@ -123,7 +141,7 @@ function Overview({ dataset, qualityState, onNavigate, onRetryQuality, onReport,
           {qualityState.loading ? <LoadingBlock label="Assessing quality…" /> : quality ? (
             <div className="dimension-list">
               {Object.entries(quality.dimensions).map(([name, dimension]) => (
-                <div className="dimension-row" key={name}><span>{titleCase(name)}</span><div className="mini-track"><span style={{ width: `${dimension.score ?? 0}%` }} /></div><strong>{dimension.score === null ? 'Not evaluated' : `${formatNumber(dimension.score)} / 100`}</strong></div>
+                <div className="dimension-row" key={name}><span>{dimensionLabel(name)}</span>{dimension.score === null ? <span className="dimension-unevaluated">Excluded</span> : <div className="mini-track"><span style={{ width: `${dimension.score}%` }} /></div>}<strong title={dimension.reason}>{dimension.score === null ? 'Not evaluated' : `${formatNumber(dimension.score)} / 100`}</strong></div>
               ))}
             </div>
           ) : !qualityState.error ? <EmptyBlock title="No quality result">Select a dataset to begin.</EmptyBlock> : null}
@@ -131,7 +149,7 @@ function Overview({ dataset, qualityState, onNavigate, onRetryQuality, onReport,
         <section className="panel">
           <div className="panel-head"><div><span className="eyebrow">WHAT TO REVIEW</span><h3>Leading findings</h3></div><span className="subtle-count">{issues.length} total</span></div>
           {qualityState.loading ? <LoadingBlock label="Finding issues…" /> : issues.length ? (
-            <div className="finding-list">{issues.slice(0, 3).map((issue, index) => <div className="finding" key={`${issue.dimension}-${index}`}><span className={`severity-dot ${issue.severity}`} /><div><strong>{titleCase(issue.dimension)} · {titleCase(issue.severity)}</strong><p>{issue.message}</p></div></div>)}</div>
+            <div className="finding-list">{issues.slice(0, 3).map((issue, index) => <div className="finding" key={`${issue.dimension}-${index}`}><span className={`severity-dot ${issue.severity}`} /><div><strong>{dimensionLabel(issue.dimension)} · {titleCase(issue.severity)}</strong><p>{issue.message}</p></div></div>)}</div>
           ) : qualityState.error ? <p className="muted">Quality findings are unavailable for this dataset.</p> : <EmptyBlock title="No issues reported">Available quality checks did not report issues.</EmptyBlock>}
         </section>
       </div>
@@ -167,12 +185,15 @@ function Quality({ state, retry }) {
   if (state.error) return <ErrorBlock message={state.error} retry={retry} />
   if (!state.data) return null
   const quality = state.data
+  const issues = priorityIssues(quality.issues)
+  const highIssues = issues.filter((issue) => issue.severity === 'high')
   return (
     <div className="section-stack">
       <div className="section-intro"><span className="eyebrow">EVIDENCE-BASED SCORE</span><h2>Data quality</h2><p>The score summarizes available checks. Each issue below shows what contributed to it.</p></div>
-      <section className="score-banner"><div><span className="eyebrow">OVERALL QUALITY</span><div className="score-line"><strong>{quality.overall_quality_score === null ? '—' : formatNumber(quality.overall_quality_score)}</strong><span>/ 100</span></div><span className="grade-pill">{titleCase(quality.quality_grade)}</span></div><p>Unassessed retail dimensions are excluded from the weighted score rather than treated as perfect.</p></section>
-      <div className="quality-grid">{Object.entries(quality.dimensions).map(([name, dimension]) => <div className="quality-card" key={name}><div className="quality-card-top"><span>{titleCase(name)}</span><small>Weight {formatNumber((quality.weights?.[name] ?? 0) * 100, 0)}%</small></div><strong>{dimension.score === null ? 'Not evaluated' : `${formatNumber(dimension.score)} / 100`}</strong><div className="quality-track"><span style={{ width: `${dimension.score ?? 0}%` }} /></div>{dimension.reason && <p>{dimension.reason}</p>}</div>)}</div>
-      <section className="panel"><div className="panel-head"><div><span className="eyebrow">FINDINGS</span><h3>Issues and review items</h3></div><span className="subtle-count">{quality.issues.length} findings</span></div>{quality.issues.length ? <div className="issue-list">{quality.issues.map((issue, index) => <div className="issue-row" key={`${issue.dimension}-${index}`}><span className={`severity-label severity-${issue.severity}`}>{titleCase(issue.severity)}</span><div><strong>{titleCase(issue.dimension)}{issue.column ? ` · ${issue.column}` : ''}</strong><p>{issue.message}</p></div><span className="issue-count">{formatNumber(issue.affected_records, 0)} affected</span></div>)}</div> : <EmptyBlock title="No issues reported">The available rules did not find any issues in this dataset.</EmptyBlock>}</section>
+      <section className="score-banner"><div><span className="eyebrow">AVAILABLE RULE SCORE</span><div className="score-line"><strong>{quality.overall_quality_score === null ? '—' : formatNumber(quality.overall_quality_score)}</strong><span>/ 100</span></div><span className="grade-pill">{quality.quality_grade ? `${titleCase(quality.quality_grade)} by configured checks` : 'Not graded'}</span></div><p>The score averages available checks; it does not know which columns matter most to your task. Retail checks are excluded when their required fields are absent.</p></section>
+      {highIssues.length > 0 && <div className="score-caution" role="note"><strong>{highIssues.length} high-severity finding{highIssues.length === 1 ? '' : 's'} need review regardless of the score.</strong> {highIssues[0].message}</div>}
+      <div className="quality-grid">{Object.entries(quality.dimensions).map(([name, dimension]) => <div className="quality-card" key={name}><div className="quality-card-top"><span>{dimensionLabel(name)}</span><small>{dimension.score === null ? 'Excluded from score' : `Base weight ${formatNumber((quality.weights?.[name] ?? 0) * 100, 0)}%`}</small></div><strong>{dimension.score === null ? 'Not evaluated' : `${formatNumber(dimension.score)} / 100`}</strong>{dimension.score !== null && <div className="quality-track"><span style={{ width: `${dimension.score}%` }} /></div>}{dimension.reason && <p>{dimension.reason}</p>}</div>)}</div>
+      <section className="panel"><div className="panel-head"><div><span className="eyebrow">FINDINGS</span><h3>Issues and review items</h3></div><span className="subtle-count">{issues.length} findings</span></div>{issues.length ? <div className="issue-list">{issues.map((issue, index) => <div className="issue-row" key={`${issue.dimension}-${index}`}><span className={`severity-label severity-${issue.severity}`}>{titleCase(issue.severity)}</span><div><strong>{dimensionLabel(issue.dimension)}{issue.column ? ` · ${issue.column}` : ''}</strong><p>{issue.message}</p></div><span className="issue-count">{formatNumber(issue.affected_records, 0)} affected</span></div>)}</div> : <EmptyBlock title="No issues reported">The available rules did not find any issues in this dataset.</EmptyBlock>}</section>
     </div>
   )
 }
@@ -200,7 +221,7 @@ function Anomalies({ state, retry, onPage, explanation, explanationLoading, expl
   return <div className="section-stack"><div className="section-intro"><span className="eyebrow">UNUSUAL OBSERVATIONS</span><h2>Anomaly review</h2><p>An unusual record is a lead for investigation, not proof of a data-quality error.</p></div>
     <div className="stats-grid three"><StatCard label="FLAGGED ROWS" value={formatNumber(result.anomaly_rows_count, 0)} detail={`Of ${formatNumber(result.rows_count, 0)} data rows`} tone="stat-emphasis" /><StatCard label="POSSIBLE RETURNS" value={result.retail_context ? formatNumber(result.retail_context.flagged_negative_quantity_with_cancellation, 0) : '—'} detail="Negative quantity with cancellation marker" /><StatCard label="REVIEW NEGATIVE QTY" value={result.retail_context ? formatNumber(result.retail_context.flagged_negative_quantity_without_cancellation, 0) : '—'} detail="Without cancellation marker" /></div>
     {result.status === 'not_evaluated' && <EmptyBlock title="Anomaly checks were not evaluated">This dataset needs usable numeric fields. Check the method notes below.</EmptyBlock>}
-    <section className="panel"><div className="panel-head"><div><span className="eyebrow">METHODS</span><h3>How rows were checked</h3></div></div><div className="method-summary">{Object.entries(result.methods).map(([name, method]) => <div key={name}><strong>{titleCase(name)}</strong><span>{method.status === 'evaluated' ? name === 'isolation_forest' ? `${formatNumber(method.flagged_rows, 0)} flags · ${method.fields.join(', ')}` : `${Object.values(method.fields).filter((field) => field.status === 'evaluated').length} fields assessed` : method.reason || 'Not evaluated'}</span></div>)}</div></section>
+    <section className="panel"><div className="panel-head"><div><span className="eyebrow">METHODS</span><h3>How rows were checked</h3></div></div><p className="method-note">IQR and Z-score are statistical checks. Isolation Forest is fitted to this dataset when enough numeric rows exist. The next-step suggestions come from explicit rules, not a language model.</p><div className="method-summary">{Object.entries(result.methods).map(([name, method]) => <div key={name}><strong>{titleCase(name)}</strong><span>{method.status === 'evaluated' ? name === 'isolation_forest' ? `${formatNumber(method.flagged_rows, 0)} flags · ${method.fields.join(', ')}` : `${Object.values(method.fields).filter((field) => field.status === 'evaluated').length} fields assessed` : method.reason || 'Not evaluated'}</span><p>{METHOD_DESCRIPTIONS[name]}</p></div>)}</div></section>
     <section className="panel table-panel"><div className="panel-head"><div><span className="eyebrow">FLAGGED RECORDS</span><h3>Review queue</h3></div><form className="row-lookup" onSubmit={onLookup}><label htmlFor="row-number">Source row</label><input id="row-number" type="number" min="1" max={result.rows_count} value={rowInput} onChange={(event) => setRowInput(event.target.value)} placeholder="#" /><button className="button button-outline" type="submit">Explain</button></form></div>
       <p className="queue-note">Priority order: more anomaly signals first, then the model score. Row # is the position in the uploaded data, excluding the header. Explanations cover numeric anomaly signals; missing fields appear in Profile and Quality.</p>
       <div className="explanation-response" ref={explanationRef} aria-live="polite">

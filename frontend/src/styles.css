@@ -129,6 +129,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .dimension-list { display: flex; flex-direction: column; gap: 17px; padding: 4px 0 3px; }
 .dimension-row { display: grid; grid-template-columns: 100px 1fr 93px; align-items: center; gap: 11px; font-size: 11px; color: #4e6970; }
 .dimension-row strong { color: #33565d; font-size: 11px; text-align: right; }
+.dimension-unevaluated { color: #839597; font-size: 10px; }
 .mini-track, .quality-track { height: 6px; border-radius: 99px; background: #eaf0ee; overflow: hidden; }
 .mini-track span, .quality-track span { display: block; height: 100%; background: #57b89e; border-radius: inherit; }
 .finding-list { display: flex; flex-direction: column; }
@@ -140,6 +141,9 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .severity-dot { width: 8px; height: 8px; border-radius: 50%; background: #d1a354; margin-top: 4px; flex: 0 0 8px; }
 .severity-dot.high { background: #cf6e5d; }
 .severity-dot.low, .severity-dot.info { background: #6ab9ae; }
+.score-caution { border: 1px solid #efd6a7; border-radius: 11px; background: #fff8e8; padding: 13px 16px; color: #785e2f; font-size: 12px; line-height: 1.5; }
+.score-caution strong { color: #765022; }
+.score-caution .text-button { margin-left: 4px; }
 
 .loading-block { background: white; border: 1px solid #e2ebe8; border-radius: 13px; min-height: 180px; display: flex; align-items: center; justify-content: center; gap: 11px; color: #668083; font-size: 12px; }
 .spinner { width: 19px; height: 19px; border-radius: 50%; border: 2px solid #d6e9e2; border-top-color: #3ba88b; animation: spin .7s linear infinite; }
@@ -191,10 +195,12 @@ details summary { color: #198774; cursor: pointer; font-size: 11px; font-weight:
 .issue-count { margin-left: auto; font-size: 10px; color: #8da0a0; white-space: nowrap; }
 
 .method-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.method-note { color: #70888b; font-size: 11px; line-height: 1.5; margin: -4px 0 15px; }
 .method-summary > div { border: 1px solid #e5eeea; background: #fafcfb; border-radius: 9px; padding: 12px; }
 .method-summary strong, .method-summary span { display: block; }
 .method-summary strong { font-size: 11px; color: #385760; }
 .method-summary span { font-size: 10px; color: #889c9c; margin-top: 6px; line-height: 1.4; }
+.method-summary p { color: #667f81; font-size: 10px; line-height: 1.45; margin: 7px 0 0; }
 .row-lookup { display: flex; align-items: center; gap: 7px; }
 .row-lookup label { color: #70888d; font-size: 10px; font-weight: 700; white-space: nowrap; }
 .row-lookup input { width: 83px; border: 1px solid #d3e2de; border-radius: 8px; padding: 8px; font-size: 11px; color: #33565a; }

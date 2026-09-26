@@ -152,9 +152,9 @@ def render_report_pdf(
     score_label = f"{_number(score, 2)} / 100" if score is not None else "Not evaluated"
     grade = quality.get("quality_grade")
     card = Table([[
-        [Paragraph("OVERALL QUALITY", styles["card_label"]), Paragraph(score_label, styles["card_value"])],
+        [Paragraph("AVAILABLE RULE SCORE", styles["card_label"]), Paragraph(score_label, styles["card_value"])],
         Paragraph(
-            f"{_text(str(grade).title()) if grade else 'No overall grade'}<br/>"
+            f"{_text(str(grade).replace('_', ' ').title()) + ' by configured checks' if grade else 'No overall grade'}<br/>"
             f"{_number(profile['rows_count'])} rows | {_number(profile['columns_count'])} columns",
             styles["card_detail"],
         ),
@@ -173,6 +173,14 @@ def render_report_pdf(
         f"{_number(profile['duplicate_rows_count'])} duplicate rows. Anomaly detection "
         f"{('flagged ' + _number(anomalies['anomaly_rows_count']) + ' distinct rows for review') if anomalies['anomaly_rows_count'] is not None else 'was not evaluated'}. "
         "Unusual observations are investigation leads, not automatically data-quality errors.",
+        styles["body"],
+    ))
+    high_issues = [issue for issue in quality["issues"] if issue.get("severity") == "high"]
+    story.append(Paragraph(
+        "The rule score does not know which fields are essential to the intended use. "
+        + (f"{len(high_issues)} high-severity finding(s) need review regardless of the score. "
+           f"For example: {_text(high_issues[0]['message'])}" if high_issues else
+           "Review individual findings before using the data."),
         styles["body"],
     ))
 
