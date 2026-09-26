@@ -591,7 +591,7 @@ The previous sidebar showed a chevron beside the workspace name without offering
 
 ### Verification
 
-Backend compilation passed and all 26 automated tests passed. The frontend production build passed. The build still warns about the separately loaded Plotly bundle, around 381 kB compressed. The live sample's tabs, row review, chart controls, report download, and responsive layout were checked in the browser after the frontend update. These checks verify the public sample and core interactions; they do not certify every possible CSV or Excel file.
+Backend compilation passed and all 26 automated tests passed. The frontend production build and the GitHub Actions run for the Phase 12 commit passed. The build still warns about the separately loaded Plotly bundle, around 381 kB compressed. In a local browser, the sample's quality, profile details, anomaly paging and explanation, numeric and category charts, and phone layout were checked. The local report endpoint returned HTTP 200 with a PDF. After deployment, the hosted dashboard showed the revised layout, the 5,000-row sample, score 98.61, 877 flagged rows, and the reduced chart toolbar. These checks cover core interactions, not every possible CSV or Excel file.
 
 ### Remaining Limits
 
