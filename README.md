@@ -174,7 +174,18 @@ Implemented:
 - Retail context for flagged negative quantities, including cancellation-style invoices
 - Clear `not_evaluated` results when a method lacks enough usable data
 
-The endpoint flags observations for investigation; it does not change the uploaded file or call every anomaly a data-quality error. It returns up to 20 example rows. The count covers all flagged rows, with rows flagged by multiple methods counted once.
+The endpoint flags observations for investigation; it does not change the uploaded file or call every anomaly a data-quality error. It returns 20 example rows by default. The count covers all flagged rows, with rows flagged by multiple methods counted once.
+
+### Phase 7 — Explainability ✅
+
+Implemented:
+
+- Plain-language evidence for every displayed anomaly: observed value and boundary for IQR/Z-score, or model score for Isolation Forest
+- A cautious interpretation based on available retail rules, with a suggested next check
+- `GET /datasets/{dataset_id}/anomalies/{row_number}/explanation` to inspect any data row, including one outside the default examples
+- `offset` and `limit` on the anomaly list to page through all flagged rows (up to 100 per response)
+
+The model explains that a combination is unusual, but it does not claim to identify the field that caused an Isolation Forest flag. Retail interpretations distinguish a possible return from a possible quality issue without making a final business judgment.
 
 ---
 
@@ -216,7 +227,7 @@ Business context used to distinguish legitimate unusual values from potential er
 - [x] Phase 4 — Data Profiling Engine
 - [x] Phase 5 — Data Quality Engine
 - [x] Phase 6 — Anomaly Detection Engine
-- [ ] Phase 7 — Explainability
+- [x] Phase 7 — Explainability
 - [ ] Phase 8 — React Dashboard
 - [ ] Phase 9 — Interactive Visualizations
 - [ ] Phase 10 — Report Generation
@@ -266,6 +277,7 @@ The local `backend/.env` file must contain the PostgreSQL connection configurati
 | GET | `/datasets/{dataset_id}/profile` | Generate a detailed profile for an uploaded dataset |
 | GET | `/datasets/{dataset_id}/quality` | Calculate explainable data-quality scores and issues |
 | GET | `/datasets/{dataset_id}/anomalies` | Find unusual numeric observations with method evidence and retail context |
+| GET | `/datasets/{dataset_id}/anomalies/{row_number}/explanation` | Explain a specific one-based data row, flagged or not |
 
 ---
 

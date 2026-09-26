@@ -51,6 +51,15 @@ def ingest_dataset(file: UploadFile, db: Session) -> Dataset:
             normalized_file_path.unlink(missing_ok=True)
         raise HTTPException(status_code=400, detail=f"The uploaded file could not be read: {error}") from error
 
+    if dataframe.empty:
+        source_file_path.unlink(missing_ok=True)
+        if normalized_file_path:
+            normalized_file_path.unlink(missing_ok=True)
+        raise HTTPException(
+            status_code=400,
+            detail="The uploaded dataset must contain at least one data row.",
+        )
+
     if normalized_file_path is None:
         raise HTTPException(status_code=500, detail="Dataset normalization did not complete.")
 

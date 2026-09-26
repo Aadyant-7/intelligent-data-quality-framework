@@ -2,6 +2,7 @@
 
 from typing import Any
 
+import numpy as np
 import pandas as pd
 from fastapi import HTTPException
 
@@ -24,6 +25,25 @@ def assess_dataset_quality(dataset: Dataset) -> dict[str, Any]:
         raise HTTPException(status_code=404, detail="Stored dataset file was not found.")
 
     dataframe = pd.read_csv(file_path)
+    if dataframe.empty:
+        dimensions = {
+            name: {
+                "score": None,
+                "status": "not_evaluated",
+                "reason": "The dataset has no data rows.",
+            }
+            for name in QUALITY_WEIGHTS
+        }
+        return {
+            "dataset_id": dataset.id,
+            "file_name": dataset.file_name,
+            "overall_quality_score": None,
+            "quality_grade": None,
+            "dimensions": dimensions,
+            "issues": [],
+            "weights": QUALITY_WEIGHTS,
+        }
+
     issues: list[dict[str, Any]] = []
 
     dimensions = {
@@ -102,9 +122,25 @@ def _assess_retail_validity(
         return {"score": None, "status": "not_evaluated"}
 
     cancellation_mask = dataframe["InvoiceNo"].astype(str).str.startswith("C")
-    negative_quantity_without_cancellation = (dataframe["Quantity"] < 0) & ~cancellation_mask
-    negative_price = dataframe["UnitPrice"] < 0
-    invalid_rows = negative_quantity_without_cancellation | negative_price
+    quantity = pd.to_numeric(dataframe["Quantity"], errors="coerce")
+    unit_price = pd.to_numeric(dataframe["UnitPrice"], errors="coerce")
+    if dataframe["Quantity"].isna().all() and dataframe["UnitPrice"].isna().all():
+        return {
+            "score": None,
+            "status": "not_evaluated",
+            "reason": "Quantity and UnitPrice contain no values to validate.",
+        }
+
+    invalid_quantity_format = dataframe["Quantity"].notna() & ~np.isfinite(quantity)
+    invalid_price_format = dataframe["UnitPrice"].notna() & ~np.isfinite(unit_price)
+    negative_quantity_without_cancellation = (quantity < 0) & np.isfinite(quantity) & ~cancellation_mask
+    negative_price = (unit_price < 0) & np.isfinite(unit_price)
+    invalid_rows = (
+        negative_quantity_without_cancellation
+        | negative_price
+        | invalid_quantity_format
+        | invalid_price_format
+    )
     invalid_count = int(invalid_rows.sum())
     score = round(100 * (1 - invalid_count / len(dataframe)), 2) if len(dataframe) else 100.0
 
@@ -128,7 +164,21 @@ def _assess_retail_validity(
             "message": "Negative unit prices were detected.",
         })
 
-    zero_price_count = int((dataframe["UnitPrice"] == 0).sum())
+    for column, mask in (
+        ("Quantity", invalid_quantity_format),
+        ("UnitPrice", invalid_price_format),
+    ):
+        malformed_count = int(mask.sum())
+        if malformed_count:
+            issues.append({
+                "dimension": "validity",
+                "severity": _severity_from_percentage(100 * malformed_count / len(dataframe)),
+                "column": column,
+                "affected_records": malformed_count,
+                "message": f"{column} contains {malformed_count} nonnumeric or non-finite values.",
+            })
+
+    zero_price_count = int((unit_price == 0).sum())
     if zero_price_count:
         issues.append({
             "dimension": "validity",
@@ -154,8 +204,14 @@ def _assess_retail_consistency(
         .nunique()
     )
     total_codes = len(description_counts)
+    if total_codes == 0:
+        return {
+            "score": None,
+            "status": "not_evaluated",
+            "reason": "No stock codes with descriptions were available to compare.",
+        }
     inconsistent_codes = int((description_counts > 1).sum())
-    score = round(100 * (1 - inconsistent_codes / total_codes), 2) if total_codes else 100.0
+    score = round(100 * (1 - inconsistent_codes / total_codes), 2)
 
     if inconsistent_codes:
         issues.append({

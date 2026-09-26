@@ -10,7 +10,7 @@ The project is built around real public data rather than fabricated examples. It
 
 ## 2. Current Status
 
-**Completed through Phase 6 — Anomaly Detection Engine**
+**Completed through Phase 7 — Explainability**
 
 The system can currently:
 
@@ -25,8 +25,9 @@ The system can currently:
 - Generate a detailed structural profile of an uploaded dataset.
 - Calculate explainable data-quality scores and evidence.
 - Flag unusual numeric observations with statistical and Isolation Forest methods.
+- Explain why a row was flagged and describe relevant retail business context.
 
-The next phase is **Explainability**, which will give users deeper guidance on why observations were flagged and how to interpret them.
+The next phase is the **React dashboard**, which will make these results easier to browse.
 
 ---
 
@@ -387,7 +388,7 @@ The service considers numeric columns but excludes likely identifiers such as `C
 
 IQR and Z-score need at least four finite values and two distinct values. IQR skips a field with zero interquartile range; Z-score skips zero or non-finite standard deviation. Isolation Forest needs at least two varying numeric fields and 20 complete rows. A method that cannot run returns `not_evaluated` with a reason. Missing and infinite numeric values are not used as anomaly evidence.
 
-The response includes each method's evaluation status, inspected fields, flagged counts, and statistical bounds where applicable. `anomaly_rows_count` is the number of distinct rows flagged by at least one method, so overlapping method counts must not be added together. Up to 20 example rows show their one-based data-row number, numeric values, triggering methods, and invoice number when present. Examples with more signals appear first. The examples are a sample of the strongest findings, not the complete anomaly list.
+The response includes each method's evaluation status, inspected fields, flagged counts, and statistical bounds where applicable. `anomaly_rows_count` is the number of distinct rows flagged by at least one method, so overlapping method counts must not be added together. The first 20 example rows are returned by default; Phase 7 added pagination for the rest. Examples with more signals appear first.
 
 When `InvoiceNo` and `Quantity` exist, the response also counts flagged negative quantities with and without a cancellation-style invoice number. Example rows include a short business-context message for negative quantities. A cancellation-style negative quantity may be a legitimate return; neither this endpoint nor its model proves a data-quality error.
 
@@ -399,11 +400,48 @@ An unknown dataset ID returned HTTP 404. Four automated service tests passed for
 
 ### Current Limits
 
-Detection currently covers numeric fields only. Identifier recognition uses column-name tokens; unusual naming may need user-configurable field roles later. Isolation Forest is fitted on a bounded sample but scores all complete rows, so analysis still reads the whole CSV into memory. Results are calculated on request and are not stored in PostgreSQL. The 1% model contamination and statistical thresholds are initial, documented defaults rather than universal definitions of "bad" data. Phase 7 will improve the explanations and interpretation.
+Detection currently covers numeric fields only. Identifier recognition uses column-name tokens; unusual naming may need user-configurable field roles later. Isolation Forest is fitted on a bounded sample but scores all complete rows, so analysis still reads the whole CSV into memory. Results are calculated on request and are not stored in PostgreSQL. The 1% model contamination and statistical thresholds are initial, documented defaults rather than universal definitions of "bad" data.
 
 ---
 
-## 10. Technology Roles
+## 10. Phase 7 — Explainability and Regression Review
+
+### Why This Phase Exists
+
+An anomaly count alone cannot tell a user whether a row is wrong. Phase 7 adds evidence that can be inspected row by row and a cautious interpretation drawn from the retail rules already used in quality scoring. The data and quality score remain separate from the anomaly findings.
+
+### API and Response
+
+`GET /datasets/{dataset_id}/anomalies?offset=0&limit=20` returns a page of flagged rows in the existing priority order. `offset` starts at zero and `limit` can be 1–100. The response includes `next_offset` when another page exists. This makes every flagged row reachable, beyond the first 20 examples.
+
+`GET /datasets/{dataset_id}/anomalies/{row_number}/explanation` explains one row by its **one-based data-row number** (the header is not counted). It works for flagged and unflagged rows. Unknown dataset IDs and out-of-range row numbers return HTTP 404.
+
+Each returned row has:
+
+- `signals`: which methods flagged it.
+- `method_evidence`: the observed value, direction, and boundary for IQR or Z-score; for Isolation Forest, the model score and zero decision boundary. A negative model score means the model flagged the row. The model does not identify the field that caused the result.
+- `interpretation`: a category, plain-language reason, and suggested next check.
+- `status`: `flagged`, `not_flagged`, or `not_evaluated`. An unflagged row is not certified correct.
+
+Retail interpretation uses explicit transaction rules rather than the model's anomaly label. Negative prices and negative quantities without a cancellation marker are possible quality issues; a cancellation-style negative quantity is a possible legitimate return; zero price needs business review. A flagged row without a matching business rule says `needs_review`. These are investigation hints, not final judgments.
+
+### Earlier-Phase Corrections
+
+The Phase 7 review found and fixed three gaps in previous phases:
+
+- Header-only CSV and `.xlsx` files could pass ingestion despite containing no data rows. They now return HTTP 400, and temporary upload files are removed.
+- The profiler's old substring check could mistake a numeric field such as `Snowfall` for an identifier because its name contains `no`. Profiling and anomaly detection now share token-based identifier recognition.
+- Quality scoring could award 100 for consistency when there were no stock-code/description pairs to compare, and malformed retail numbers could raise an exception. Empty comparisons now return `not_evaluated`; nonnumeric and non-finite retail values produce counted validity evidence. An empty stored dataset is not scored.
+
+### Verification and Limits
+
+The real 5,000-row upload returned 877 distinct flagged rows. A two-row page returned `next_offset: 2`; a flagged sample row supplied three method explanations, while row 1 correctly returned `not_flagged`. The full dataset still profiled as 541,909 rows with 5,268 duplicates, and its quality score remained 95.47. Invalid dataset and row IDs returned 404. A header-only CSV upload returned 400. Fourteen automated tests and backend compilation passed.
+
+Explanations are based on current thresholds and the available retail fields. They cannot prove cause or replace source-system checks. Row explanations recompute the dataset analysis on request; caching and stored results remain future improvements.
+
+---
+
+## 11. Technology Roles
 
 | Technology | Role in the project |
 |---|---|
@@ -420,7 +458,7 @@ Detection currently covers numeric fields only. Identifier recognition uses colu
 
 ---
 
-## 11. Roadmap
+## 12. Roadmap
 
 | Phase | Scope | Status |
 |---|---|---|
@@ -430,11 +468,11 @@ Detection currently covers numeric fields only. Identifier recognition uses colu
 | 4 | Data profiling engine | Complete |
 | 5 | Data quality engine | Complete |
 | 6 | Anomaly detection | Complete |
-| 7 | Explainability | Planned |
+| 7 | Explainability | Complete |
 | 8–10 | Dashboard, visualizations, and reports | Planned |
 | 11 | Deployment | Planned |
 | 12 | Final documentation and polish | Planned |
 
-## 12. Next Step
+## 13. Next Step
 
-Phase 7 will expand the explanations attached to anomaly findings so a user can understand the evidence, method limits, and possible business meaning of a flagged row.
+Phase 8 will add a React dashboard for uploading datasets and browsing profiles, quality evidence, anomalies, and row explanations through the API.

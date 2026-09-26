@@ -6,6 +6,7 @@ import pandas as pd
 from fastapi import HTTPException
 
 from app.models import Dataset
+from app.services.column_roles import is_identifier_column
 from app.services.dataset_storage import resolve_dataset_path
 
 
@@ -57,7 +58,7 @@ def _profile_column(column_name: str, series: pd.Series, rows_count: int) -> dic
         }
 
     if logical_type == "datetime":
-        dates = pd.to_datetime(series, errors="coerce")
+        dates = pd.to_datetime(series, errors="coerce", format="mixed")
         profile["date_range"] = {
             "minimum": _json_value(dates.min()),
             "maximum": _json_value(dates.max()),
@@ -74,8 +75,7 @@ def _profile_column(column_name: str, series: pd.Series, rows_count: int) -> dic
 
 def _infer_logical_type(column_name: str, series: pd.Series) -> str:
     """Infer a useful semantic type without changing the original data."""
-    normalized_name = column_name.lower()
-    if any(marker in normalized_name for marker in ("id", "code", "number", "no")):
+    if is_identifier_column(column_name):
         return "identifier"
 
     if pd.api.types.is_datetime64_any_dtype(series):
@@ -86,7 +86,7 @@ def _infer_logical_type(column_name: str, series: pd.Series) -> str:
 
     values = series.dropna().head(1_000)
     if not values.empty:
-        parsed_dates = pd.to_datetime(values, errors="coerce")
+        parsed_dates = pd.to_datetime(values, errors="coerce", format="mixed")
         if parsed_dates.notna().mean() >= 0.95:
             return "datetime"
 

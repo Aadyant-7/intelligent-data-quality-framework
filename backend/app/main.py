@@ -1,10 +1,15 @@
-from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Dataset
-from app.services.anomaly_engine import detect_dataset_anomalies
+from app.services.anomaly_engine import (
+    DEFAULT_EXAMPLES,
+    MAX_EXAMPLES,
+    detect_dataset_anomalies,
+    explain_dataset_row,
+)
 from app.services.data_profiler import profile_dataset
 from app.services.dataset_ingestion import ingest_dataset
 from app.services.quality_engine import assess_dataset_quality
@@ -65,12 +70,28 @@ def get_dataset_quality(dataset_id: int, db: Session = Depends(get_db)):
 
 
 @app.get("/datasets/{dataset_id}/anomalies")
-def get_dataset_anomalies(dataset_id: int, db: Session = Depends(get_db)):
+def get_dataset_anomalies(
+    dataset_id: int,
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=DEFAULT_EXAMPLES, ge=1, le=MAX_EXAMPLES),
+    db: Session = Depends(get_db),
+):
     dataset = db.get(Dataset, dataset_id)
     if dataset is None:
         raise HTTPException(status_code=404, detail="Dataset not found.")
 
-    return detect_dataset_anomalies(dataset)
+    return detect_dataset_anomalies(dataset, offset=offset, limit=limit)
+
+
+@app.get("/datasets/{dataset_id}/anomalies/{row_number}/explanation")
+def get_anomaly_explanation(
+    dataset_id: int, row_number: int, db: Session = Depends(get_db)
+):
+    dataset = db.get(Dataset, dataset_id)
+    if dataset is None:
+        raise HTTPException(status_code=404, detail="Dataset not found.")
+
+    return explain_dataset_row(dataset, row_number)
 
 
 @app.get("/datasets")

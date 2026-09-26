@@ -1,6 +1,5 @@
 """Explainable numeric anomaly detection for normalized CSV datasets."""
 
-import re
 from typing import Any
 
 import numpy as np
@@ -9,6 +8,8 @@ from fastapi import HTTPException
 from sklearn.ensemble import IsolationForest
 
 from app.models import Dataset
+from app.services.anomaly_explainer import explain_row
+from app.services.column_roles import is_identifier_column
 from app.services.dataset_storage import resolve_dataset_path
 
 
@@ -16,21 +17,30 @@ IQR_MULTIPLIER = 1.5
 Z_SCORE_THRESHOLD = 3.0
 FOREST_CONTAMINATION = 0.01
 FOREST_TRAINING_ROWS = 10_000
-MAX_EXAMPLES = 20
+DEFAULT_EXAMPLES = 20
+MAX_EXAMPLES = 100
 RANDOM_STATE = 42
 
 
-def detect_dataset_anomalies(dataset: Dataset) -> dict[str, Any]:
+def detect_dataset_anomalies(
+    dataset: Dataset,
+    *,
+    offset: int = 0,
+    limit: int = DEFAULT_EXAMPLES,
+    row_number: int | None = None,
+) -> dict[str, Any]:
     """Flag unusual numeric values and combinations without judging data quality."""
     file_path = resolve_dataset_path(dataset.file_path)
     if not file_path.is_file():
         raise HTTPException(status_code=404, detail="Stored dataset file was not found.")
 
     dataframe = pd.read_csv(file_path)
+    if row_number is not None and not 1 <= row_number <= len(dataframe):
+        raise HTTPException(status_code=404, detail="Dataset row not found.")
     numeric_columns = [
         name
         for name in dataframe.select_dtypes(include="number").columns
-        if not _is_identifier(name)
+        if not is_identifier_column(name)
     ]
     numeric_data = dataframe[numeric_columns].replace([np.inf, -np.inf], np.nan)
     row_count = len(dataframe)
@@ -71,6 +81,13 @@ def detect_dataset_anomalies(dataset: Dataset) -> dict[str, Any]:
                     continue
                 lower = average - Z_SCORE_THRESHOLD * deviation
                 upper = average + Z_SCORE_THRESHOLD * deviation
+
+            if not np.isfinite(lower) or not np.isfinite(upper):
+                field_results[column] = {
+                    "status": "not_evaluated",
+                    "reason": "The calculated bounds are non-finite.",
+                }
+                continue
 
             mask = ((values < lower) | (values > upper)).fillna(False).to_numpy()
             flagged_by[f"{method}:{column}"] = mask
@@ -129,7 +146,7 @@ def detect_dataset_anomalies(dataset: Dataset) -> dict[str, Any]:
     if flagged_by:
         vote_count = np.sum(list(flagged_by.values()), axis=0)
         anomaly_indices = np.flatnonzero(vote_count)
-        # More independent signals first; a lower forest score is more unusual.
+        # More signals first; a lower forest score is more unusual.
         ordered = sorted(
             anomaly_indices,
             key=lambda index: (
@@ -137,7 +154,7 @@ def detect_dataset_anomalies(dataset: Dataset) -> dict[str, Any]:
                 float(forest_scores[index]) if np.isfinite(forest_scores[index]) else 0.0,
                 int(index),
             ),
-        )[:MAX_EXAMPLES]
+        )[offset:offset + limit]
     else:
         anomaly_indices = np.array([], dtype=int)
         ordered = []
@@ -157,22 +174,12 @@ def detect_dataset_anomalies(dataset: Dataset) -> dict[str, Any]:
             ),
         }
 
-    examples = []
-    for index in ordered:
-        signals = [name for name, mask in flagged_by.items() if mask[index]]
-        examples.append({
-            "row_number": int(index) + 1,
-            "values": {
-                column: _json_value(numeric_data.at[index, column])
-                for column in numeric_columns
-            },
-            "invoice_number": _json_value(dataframe.at[index, "InvoiceNo"])
-            if "InvoiceNo" in dataframe else None,
-            "signals": signals,
-            "business_context": _retail_context(dataframe, index),
-        })
+    examples = [
+        explain_row(dataframe, numeric_data, int(index), flagged_by, method_results, forest_scores)
+        for index in ordered
+    ]
 
-    return {
+    response = {
         "dataset_id": dataset.id,
         "file_name": dataset.file_name,
         "status": "evaluated" if evaluated else "not_evaluated",
@@ -182,36 +189,24 @@ def detect_dataset_anomalies(dataset: Dataset) -> dict[str, Any]:
         "retail_context": retail_context,
         "methods": method_results,
         "examples": examples,
-        "example_limit": MAX_EXAMPLES,
+        "example_limit": limit,
+        "example_offset": offset,
+        "next_offset": offset + limit if offset + limit < len(anomaly_indices) else None,
         "message": "An anomaly is an unusual observation, not proof of a data-quality error.",
     }
+    if row_number is not None:
+        response["requested_row"] = explain_row(
+            dataframe, numeric_data, row_number - 1, flagged_by, method_results, forest_scores
+        )
+    return response
 
 
-def _is_identifier(column_name: str) -> bool:
-    separated = re.sub(r"([a-z])([A-Z])", r"\1_\2", column_name)
-    tokens = re.split(r"[^A-Za-z0-9]+", separated.lower())
-    return any(token in {"id", "code", "number", "no"} for token in tokens)
+def explain_dataset_row(dataset: Dataset, row_number: int) -> dict[str, Any]:
+    """Explain any data row, including one outside the default examples."""
+    return detect_dataset_anomalies(
+        dataset, offset=0, limit=0, row_number=row_number
+    )["requested_row"]
 
 
 def _finite_float(value: Any) -> float | None:
     return float(value) if np.isfinite(value) else None
-
-
-def _json_value(value: Any) -> Any:
-    if pd.isna(value):
-        return None
-    if hasattr(value, "item"):
-        return value.item()
-    return value
-
-
-def _retail_context(dataframe: pd.DataFrame, index: int) -> str | None:
-    if not {"InvoiceNo", "Quantity"}.issubset(dataframe.columns):
-        return None
-    quantity = pd.to_numeric(dataframe.at[index, "Quantity"], errors="coerce")
-    if pd.isna(quantity) or quantity >= 0:
-        return None
-    invoice = str(dataframe.at[index, "InvoiceNo"])
-    if invoice.startswith("C"):
-        return "Cancellation-style invoice: a negative quantity may be a legitimate return."
-    return "Negative quantity without a cancellation marker; review its business context."

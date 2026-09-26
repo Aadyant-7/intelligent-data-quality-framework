@@ -10,7 +10,7 @@ from fastapi import HTTPException
 
 from app.models import Dataset
 from app.services import dataset_storage
-from app.services.anomaly_engine import detect_dataset_anomalies
+from app.services.anomaly_engine import detect_dataset_anomalies, explain_dataset_row
 
 
 class AnomalyEngineTests(unittest.TestCase):
@@ -47,6 +47,61 @@ class AnomalyEngineTests(unittest.TestCase):
         cancellation = next(item for item in result["examples"] if item["row_number"] == 30)
         self.assertIn("legitimate return", cancellation["business_context"])
         self.assertTrue(cancellation["signals"])
+        self.assertEqual(
+            cancellation["interpretation"]["category"], "possible_legitimate_return"
+        )
+        statistical_evidence = [
+            item for item in cancellation["method_evidence"]
+            if item["method"] in {"iqr", "z_score"}
+        ]
+        self.assertTrue(statistical_evidence)
+        self.assertTrue(all("boundary" in item for item in statistical_evidence))
+
+        requested = explain_dataset_row(self.dataset, 30)
+        self.assertEqual(requested["row_number"], 30)
+        self.assertEqual(requested["signals"], cancellation["signals"])
+
+    def test_pagination_reaches_later_anomalies(self):
+        pd.DataFrame({
+            "Quantity": list(range(1, 30)) + [-1000, 1000],
+            "UnitPrice": list(range(10, 39)) + [1000, -1000],
+        }).to_csv(self.csv_path, index=False)
+
+        first_page = detect_dataset_anomalies(self.dataset, limit=1)
+        second_page = detect_dataset_anomalies(self.dataset, offset=1, limit=1)
+
+        self.assertEqual(first_page["next_offset"], 1)
+        self.assertNotEqual(
+            first_page["examples"][0]["row_number"],
+            second_page["examples"][0]["row_number"],
+        )
+
+    def test_business_interpretation_uses_rules_not_outlier_status(self):
+        pd.DataFrame({
+            "InvoiceNo": ["C1", "A2", "A3", "A4"],
+            "Quantity": [-10, -10, 1, 1],
+            "UnitPrice": [2, 2, -1, 0],
+        }).to_csv(self.csv_path, index=False)
+
+        categories = [
+            explain_dataset_row(self.dataset, row)["interpretation"]["category"]
+            for row in range(1, 5)
+        ]
+
+        self.assertEqual(categories, [
+            "possible_legitimate_return",
+            "possible_data_quality_issue",
+            "possible_data_quality_issue",
+            "needs_business_review",
+        ])
+
+    def test_row_explanation_rejects_nonexistent_row(self):
+        pd.DataFrame({"Amount": [1, 2, 3, 4]}).to_csv(self.csv_path, index=False)
+
+        for row_number in (0, 5):
+            with self.assertRaises(HTTPException) as error:
+                explain_dataset_row(self.dataset, row_number)
+            self.assertEqual(error.exception.status_code, 404)
 
     def test_non_numeric_dataset_is_not_evaluated(self):
         pd.DataFrame({"Category": ["A", "B", "C"]}).to_csv(self.csv_path, index=False)
@@ -56,6 +111,9 @@ class AnomalyEngineTests(unittest.TestCase):
         self.assertEqual(result["status"], "not_evaluated")
         self.assertIsNone(result["anomaly_rows_count"])
         self.assertEqual(result["examples"], [])
+        explanation = explain_dataset_row(self.dataset, 1)
+        self.assertEqual(explanation["status"], "not_evaluated")
+        self.assertEqual(explanation["interpretation"]["category"], "not_evaluated")
 
     def test_one_generic_numeric_field_skips_multivariate_method(self):
         pd.DataFrame({"Snowfall": list(range(1, 30)) + [1000]}).to_csv(
