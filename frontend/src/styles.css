@@ -198,6 +198,10 @@ details summary { color: #198774; cursor: pointer; font-size: 11px; font-weight:
 .row-lookup { display: flex; align-items: center; gap: 7px; }
 .row-lookup label { color: #70888d; font-size: 10px; font-weight: 700; white-space: nowrap; }
 .row-lookup input { width: 83px; border: 1px solid #d3e2de; border-radius: 8px; padding: 8px; font-size: 11px; color: #33565a; }
+.queue-note { margin: 0; padding: 0 22px 16px; color: #70888b; font-size: 11px; line-height: 1.5; }
+.explanation-response { scroll-margin-top: 20px; }
+.explanation-response:empty { display: none; }
+.explanation-response:not(:empty) { padding: 0 20px 20px; }
 .value-preview { display: block; max-width: 245px; line-height: 1.45; overflow-wrap: anywhere; }
 .pagination { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 15px 20px; border-top: 1px solid #edf1f0; color: #8da0a1; font-size: 10px; }
 .pagination > div { display: flex; gap: 7px; }

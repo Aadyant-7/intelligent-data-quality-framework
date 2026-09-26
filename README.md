@@ -99,6 +99,8 @@ The local library shows one entry per distinct stored CSV and skips old records 
 
 **Open either version:** [Public sample demo](https://intelligent-data-quality-framework.vercel.app/) · [Local dashboard with uploads](http://127.0.0.1:5173/) (requires the local backend and frontend to be running).
 
+**Reading the results:** Overview previews the dataset and its leading quality findings; Profile describes columns, missing cells, and duplicate rows; Quality shows the weighted score and the evidence behind each finding; Anomalies lists unusual numeric rows for investigation; Visualizations charts the same underlying counts and one chosen field. The anomaly queue is ordered by review priority, not source row number. Use **Source row → Explain** to inspect any one-based data row; its result appears beside the lookup. Numeric anomaly flags are not proof of data errors, and missing fields are covered in Profile and Quality. The PDF collects the main findings for sharing.
+
 ---
 
 ## Current Status
@@ -378,6 +380,10 @@ A three-pass QA review checked upload, profiling, scoring, anomalies, explanatio
 ### Local library follow-up (September 2026)
 
 The local list now hides missing-file records and repeated copies by comparing normalized CSV content. Re-uploading identical content does not add another record or file. A two-step **Clear history** control deletes all local dataset records and their stored uploads when confirmed; it also clears older entries hidden from the list. The dashboard scrollbars now use colors from its light and dark themes. The existing 11 local records produced 3 usable, distinct entries without deleting the other records. An isolated API check verified repeat-upload reuse and complete cleanup after an explicit delete; 33 backend tests and the frontend build passed.
+
+### Anomaly review clarity (September 2026)
+
+The tracked 5,000-row retail sample is the first 5,000 rows of the original workbook, not a selection of anomalies. Its 1,205 missing CustomerID values (24.1%) reflect that source slice; the full 541,909-row local copy has 135,080 missing CustomerID values (24.93%). The anomaly review now explains its priority order and distinguishes queue positions from source row numbers. Row explanations and errors appear next to the lookup and scroll into view after a request. The local library currently shows Titanic, the retail sample, and the full retail workbook after the user removed the temporary proxy test dataset.
 
 ---
 
