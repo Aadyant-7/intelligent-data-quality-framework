@@ -95,6 +95,8 @@ This project aims to build an automated framework that can:
 
 The hosted workspace is read-only. Run the project locally to upload your own CSV or `.xlsx` file.
 
+**Open either version:** [Public sample demo](https://intelligent-data-quality-framework.vercel.app/) · [Local dashboard with uploads](http://127.0.0.1:5173/) (requires the local backend and frontend to be running).
+
 ---
 
 ## Current Status
@@ -364,6 +366,10 @@ Detailed project development, technical decisions, verification, and limitations
     docs/Documentation.md
 
 The documentation records the completed phases, verification evidence, and remaining limits.
+
+### Stabilization review (September 2026)
+
+A three-pass QA review checked upload, profiling, scoring, anomalies, explanations, charts, reports, the React dashboard, and the hosted sample. Two reproduced edge cases were fixed: a damaged `.xlsx` archive now returns HTTP 400 and removes its temporary file, and numeric profile values that JSON cannot represent (such as infinity) now appear as `null` instead of crashing the response. The final backend suite passed 28 tests, backend compilation and the frontend production build passed, and the local retail sample still returned a 98.61 quality score and 877 flagged rows. The public demo remains read-only; local uploads are available when both local servers are running. See the detailed QA record in `docs/Documentation.md`.
 
 ---
 

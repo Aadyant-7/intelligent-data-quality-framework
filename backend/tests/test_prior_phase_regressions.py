@@ -1,5 +1,6 @@
 """Focused checks for earlier phases while building explainability."""
 
+import json
 import tempfile
 import unittest
 from io import BytesIO
@@ -38,6 +39,19 @@ class PriorPhaseRegressionTests(unittest.TestCase):
 
         self.assertEqual(columns[0]["logical_type"], "numeric")
         self.assertEqual(columns[1]["logical_type"], "identifier")
+
+    def test_profile_with_infinite_number_is_json_safe(self):
+        pd.DataFrame({"Amount": [1.0, 2.0, float("inf")]}).to_csv(
+            self.csv_path, index=False
+        )
+
+        profile = profile_dataset(self.dataset)
+
+        json.dumps(profile, allow_nan=False)
+        amount = profile["columns"][0]
+        self.assertEqual(amount["sample_values"], [1.0, 2.0, None])
+        self.assertIsNone(amount["statistics"]["max"])
+        self.assertEqual(amount["statistics"]["min"], 1.0)
 
     def test_quality_reports_malformed_retail_numbers(self):
         pd.DataFrame({
@@ -110,6 +124,15 @@ class PriorPhaseRegressionTests(unittest.TestCase):
         with self.assertRaises(HTTPException) as excel_error:
             ingest_dataset(excel_file, None)
         self.assertEqual(excel_error.exception.status_code, 400)
+        self.assertEqual(list(self.upload_directory.iterdir()), [])
+
+    def test_corrupt_xlsx_upload_is_rejected_without_leftovers(self):
+        corrupt_file = UploadFile(filename="broken.xlsx", file=BytesIO(b"PK\x03\x04garbage"))
+
+        with self.assertRaises(HTTPException) as error:
+            ingest_dataset(corrupt_file, None)
+
+        self.assertEqual(error.exception.status_code, 400)
         self.assertEqual(list(self.upload_directory.iterdir()), [])
 
 

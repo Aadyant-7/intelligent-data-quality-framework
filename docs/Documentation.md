@@ -600,3 +600,16 @@ The free Render service sleeps after inactivity, so the first request may be slo
 ## 18. Status
 
 The planned project is complete as a portfolio demonstration. Further work can focus on newly found bugs, broader dataset trials, accessibility checks, and features chosen after using the finished workflow.
+
+## 19. Three-Pass Stabilization Review (2026-09-26)
+
+The review covered the code and configuration, automated tests, local API and dashboard, the public sample dashboard, realistic retail data, and small datasets with known results. It checked CSV and `.xlsx` ingestion, profiles, quality scores, anomaly counts and explanations, chart data, PDF output, invalid IDs, malformed files, and visible failure states. Negative retail quantities with cancellation markers remained investigation leads rather than automatic quality errors.
+
+Two failures were reproduced and fixed without changing the architecture:
+
+- A corrupt `.xlsx` ZIP could raise an uncaught `BadZipFile`, return HTTP 500, and leave an uploaded fragment. Ingestion now catches that specific read error, returns HTTP 400, and removes the fragment. A regression test checks the response and cleanup.
+- An infinite numeric CSV value could reach the profile response as a non-finite float, causing JSON serialization to fail with HTTP 500. Profiling now converts non-finite output values to JSON `null`, including samples and computed statistics. Finite values remain numeric. A regression test checks strict JSON serialization and the affected fields.
+
+After the fixes, all 28 backend tests and `python -m compileall -q app` passed. An isolated API check confirmed corrupt Excel rejection and cleanup, successful CSV upload and JSON-safe profile, and HTTP 404 for a missing dataset. The frontend production build passed. The local 5,000-row retail sample still returned 79 duplicates, quality score 98.61, 877 flagged rows, a flagged-row explanation, evaluated Quantity chart data, and an `application/pdf` report. The local browser displayed the upload form and the sample's profile and quality views; the hosted browser displayed its one read-only sample without an upload form. The separately loaded Plotly bundle still produces a build size warning. A repeat npm audit was unavailable because the registry audit request failed in this environment; no dependency upgrade was made on that basis.
+
+Some older records in the local development database refer to upload files that are no longer present. Selecting one reports a storage error; the review did not delete user metadata. The current sample record and stored file work. The hosted API was checked during the earlier review; this final pass confirmed its dashboard in the browser but could not repeat direct API calls from the restricted terminal. The public demo still requires a manual Render deployment for backend changes until Git provider integration is connected.

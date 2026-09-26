@@ -1,5 +1,6 @@
 """Dataset profiling utilities for normalized CSV files."""
 
+from math import isfinite
 from typing import Any
 
 import pandas as pd
@@ -103,5 +104,7 @@ def _json_value(value: Any) -> Any:
     if isinstance(value, pd.Timestamp):
         return value.isoformat()
     if hasattr(value, "item"):
-        return value.item()
+        value = value.item()
+    if isinstance(value, float) and not isfinite(value):
+        return None
     return value

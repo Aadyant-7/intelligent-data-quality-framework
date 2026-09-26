@@ -3,6 +3,7 @@
 from pathlib import Path
 from shutil import copyfileobj
 from uuid import uuid4
+from zipfile import BadZipFile
 
 import pandas as pd
 from fastapi import HTTPException, UploadFile
@@ -45,7 +46,7 @@ def ingest_dataset(file: UploadFile, db: Session) -> Dataset:
             normalized_file_path = UPLOAD_DIRECTORY / f"{upload_id}_{Path(original_filename).stem}.csv"
             dataframe.to_csv(normalized_file_path, index=False)
             source_file_path.unlink(missing_ok=True)
-    except (pd.errors.EmptyDataError, pd.errors.ParserError, UnicodeDecodeError, ValueError) as error:
+    except (pd.errors.EmptyDataError, pd.errors.ParserError, UnicodeDecodeError, ValueError, BadZipFile) as error:
         source_file_path.unlink(missing_ok=True)
         if normalized_file_path:
             normalized_file_path.unlink(missing_ok=True)
