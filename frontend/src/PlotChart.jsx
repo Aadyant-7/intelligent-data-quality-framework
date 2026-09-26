@@ -33,7 +33,7 @@ export default function PlotChart({ data, layout, label, height = 320 }) {
       }, {
         responsive: true,
         displaylogo: false,
-        modeBarButtonsToRemove: ['select2d', 'lasso2d'],
+        modeBarButtonsToRemove: ['sendChartToCloud', 'pan2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'select2d', 'lasso2d'],
       })
       if (!active) return
       observer = new ResizeObserver(() => {

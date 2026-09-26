@@ -47,15 +47,12 @@ function Sidebar({ datasets, selectedId, onSelect, loading, error, reload, file,
   return (
     <aside className="sidebar">
       <div className="brand"><div className="brand-mark">DQ</div><div><strong>Data Quality</strong><span>Studio</span></div></div>
-      <div className="sidebar-section-label">WORKSPACE</div>
-      <div className="workspace-name"><span className="workspace-dot" /> {DEMO_MODE ? 'Public sample' : 'Local analysis'} <span className="workspace-chevron">⌄</span></div>
-
       <div className="sidebar-heading"><span>Datasets</span><span className="count-pill">{datasets.length}</span></div>
-      <label className="search-wrap">
+      {(datasets.length > 1 || search) && <label className="search-wrap">
         <span className="sr-only">Search datasets</span>
         <span aria-hidden="true">⌕</span>
         <input type="search" placeholder="Search datasets" value={search} onChange={(event) => setSearch(event.target.value)} />
-      </label>
+      </label>}
 
       <div className="dataset-list" aria-label="Datasets">
         {loading && <div className="sidebar-message">Loading datasets…</div>}
@@ -90,13 +87,13 @@ function Sidebar({ datasets, selectedId, onSelect, loading, error, reload, file,
   )
 }
 
-function Overview({ dataset, qualityState, onNavigate, onReport, reporting, reportError }) {
+function Overview({ dataset, qualityState, onNavigate, onRetryQuality, onReport, reporting, reportError }) {
   const quality = qualityState.data
   const issues = quality?.issues ?? []
   return (
     <div className="section-stack">
       <section className="hero-panel">
-        <div><span className="hero-kicker">DATASET WORKSPACE</span><h2>{dataset.file_name}</h2><p>Start with the shape of your data, then inspect the evidence behind quality scores and unusual records.</p></div>
+        <div><span className="hero-kicker">CURRENT DATASET</span><h2>{dataset.file_name}</h2><p>Review its structure, quality checks, and unusual records.</p></div>
         <div className="hero-actions"><div className="hero-id">DATASET <strong>#{dataset.id}</strong></div><button className="button report-button" onClick={onReport} disabled={reporting}>{reporting ? 'Preparing PDF…' : 'Download PDF report'}</button>{reportError && <p role="alert" className="report-error">{reportError}</p>}</div>
       </section>
       <div className="stats-grid">
@@ -105,7 +102,7 @@ function Overview({ dataset, qualityState, onNavigate, onReport, reporting, repo
         <StatCard label="QUALITY SCORE" value={quality ? formatNumber(quality.overall_quality_score) : qualityState.loading ? '…' : '—'} detail={quality ? titleCase(quality.quality_grade) : 'From available checks'} tone="stat-emphasis" />
         <StatCard label={DEMO_MODE ? 'SAMPLE READY' : 'UPLOADED'} value={formatDate(dataset.uploaded_at)} detail={DEMO_MODE ? 'Public reference data' : 'Local storage'} />
       </div>
-      {qualityState.error && <ErrorBlock message={qualityState.error} />}
+      {qualityState.error && <ErrorBlock message={qualityState.error} retry={onRetryQuality} />}
       <div className="overview-grid">
         <section className="panel">
           <div className="panel-head"><div><span className="eyebrow">ASSESSMENT</span><h3>Quality at a glance</h3></div><button className="text-button" onClick={() => onNavigate('quality')}>View details →</button></div>
@@ -123,10 +120,6 @@ function Overview({ dataset, qualityState, onNavigate, onReport, reporting, repo
             <div className="finding-list">{issues.slice(0, 3).map((issue, index) => <div className="finding" key={`${issue.dimension}-${index}`}><span className={`severity-dot ${issue.severity}`} /><div><strong>{titleCase(issue.dimension)} · {titleCase(issue.severity)}</strong><p>{issue.message}</p></div></div>)}</div>
           ) : qualityState.error ? <p className="muted">Quality findings are unavailable for this dataset.</p> : <EmptyBlock title="No issues reported">Available quality checks did not report issues.</EmptyBlock>}
         </section>
-      </div>
-      <div className="action-grid">
-        <button className="action-card" onClick={() => onNavigate('profile')}><span className="action-icon">▥</span><strong>Explore the profile</strong><span>Types, missing values, ranges, and examples</span><b>→</b></button>
-        <button className="action-card" onClick={() => onNavigate('anomalies')}><span className="action-icon">◈</span><strong>Review anomalies</strong><span>Unusual values with evidence and context</span><b>→</b></button>
       </div>
     </div>
   )
@@ -242,13 +235,18 @@ export default function App() {
 
   useEffect(() => {
     if (selectedId === null) return
-    const controller = new AbortController()
-    setQualityState({ data: null, loading: true, error: '' })
     setProfileState({ data: null, loading: false, error: '' })
     setAnomalyState({ data: null, loading: false, error: '' })
+    setVisualAnomalyState({ data: null, loading: false, error: '' })
     setExplanation(null)
     setExplanationLoading(false)
     setExplanationError('')
+  }, [selectedId])
+
+  useEffect(() => {
+    if (selectedId === null) return
+    const controller = new AbortController()
+    setQualityState({ data: null, loading: true, error: '' })
     api.quality(selectedId, controller.signal).then((data) => setQualityState({ data, loading: false, error: '' })).catch((error) => {
       if (error.name !== 'AbortError') setQualityState({ data: null, loading: false, error: error.message })
     })
@@ -384,15 +382,15 @@ export default function App() {
   return <div className="app-shell">
     <Sidebar datasets={datasets} selectedId={selectedId} onSelect={chooseDataset} loading={listLoading} error={listError} reload={() => setListReload((value) => value + 1)} file={file} setFile={setFile} uploading={uploading} uploadError={uploadError} onUpload={handleUpload} search={search} setSearch={setSearch} />
     <main className="main-content">
-      <header className="topbar"><div><span className="eyebrow">INTELLIGENT DATA QUALITY FRAMEWORK</span><h1>Make sense of your data.</h1><p>Profile structure, measure quality, and investigate unusual records.</p></div><div className="topbar-status"><span className="status-dot" /> {DEMO_MODE ? 'Public sample demo' : 'Local workspace'}</div></header>
+      <header className="topbar"><div><span className="eyebrow">INTELLIGENT DATA QUALITY FRAMEWORK</span><h1>Dataset review</h1></div></header>
       {notice && <div className="success-notice" role="status">✓ {notice}<button onClick={() => setNotice('')} aria-label="Dismiss notification">×</button></div>}
-      {!selectedDataset ? listLoading ? <LoadingBlock label="Opening workspace…" /> : listError ? <ErrorBlock message={listError} retry={() => setListReload((value) => value + 1)} /> : <EmptyBlock title="Your workspace is ready">Upload a CSV or Excel dataset to start exploring its quality.</EmptyBlock> : <>
+      {!selectedDataset ? listLoading ? <LoadingBlock label="Opening workspace…" /> : listError ? <ErrorBlock message={listError} retry={() => setListReload((value) => value + 1)} /> : <EmptyBlock title={DEMO_MODE ? 'Sample unavailable' : 'Your workspace is ready'}>{DEMO_MODE ? 'Try again shortly. The free demo API may be waking up.' : 'Upload a CSV or Excel dataset to start exploring its quality.'}</EmptyBlock> : <>
         <nav className="tabs" aria-label="Dataset sections">{TABS.map((tab) => <button key={tab.id} className={activeTab === tab.id ? 'active' : ''} onClick={() => setActiveTab(tab.id)} aria-current={activeTab === tab.id ? 'page' : undefined}>{tab.label}</button>)}</nav>
-        {activeTab === 'overview' && <Overview dataset={selectedDataset} qualityState={qualityState} onNavigate={setActiveTab} onReport={handleReport} reporting={reporting} reportError={reportError} />}
+        {activeTab === 'overview' && <Overview dataset={selectedDataset} qualityState={qualityState} onNavigate={setActiveTab} onRetryQuality={() => setQualityReload((value) => value + 1)} onReport={handleReport} reporting={reporting} reportError={reportError} />}
         {activeTab === 'profile' && <Profile state={profileState} retry={() => setProfileReload((value) => value + 1)} />}
         {activeTab === 'quality' && <Quality state={qualityState} retry={() => setQualityReload((value) => value + 1)} />}
         {activeTab === 'anomalies' && <Anomalies state={anomalyState} retry={() => setAnomalyReload((value) => value + 1)} onPage={(offset) => { setPageOffset(offset); setExplanation(null); setExplanationError('') }} explanation={explanation} explanationLoading={explanationLoading} explanationError={explanationError} onExplain={explainRow} onCloseExplanation={() => setExplanation(null)} rowInput={rowInput} setRowInput={setRowInput} onLookup={handleLookup} />}
-        {activeTab === 'visualizations' && <Visualizations datasetId={selectedId} profileState={profileState} profileRetry={() => setProfileReload((value) => value + 1)} qualityState={qualityState} anomalyState={visualAnomalyState} anomalyRetry={() => setVisualAnomalyReload((value) => value + 1)} />}
+        {activeTab === 'visualizations' && <Visualizations datasetId={selectedId} profileState={profileState} profileRetry={() => setProfileReload((value) => value + 1)} qualityState={qualityState} qualityRetry={() => setQualityReload((value) => value + 1)} anomalyState={visualAnomalyState} anomalyRetry={() => setVisualAnomalyReload((value) => value + 1)} />}
       </>}
       <footer className="main-footer">Anomaly flags invite review. They are not automatic data-quality errors.</footer>
     </main>

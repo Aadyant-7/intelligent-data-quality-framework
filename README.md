@@ -1,8 +1,8 @@
 # Intelligent Data Quality Assessment & Anomaly Detection Framework
 
-An enterprise-style data analytics platform designed to automatically profile structured datasets, assess data quality, detect statistical and machine-learning-based anomalies, and present explainable insights through an interactive dashboard.
+An educational data-quality tool that profiles structured datasets, scores the checks it can evaluate, flags unusual records, and explains the evidence in a dashboard and PDF report.
 
-The project is being developed around real-world transactional data rather than a fabricated demonstration dataset.
+The reference data is a real Online Retail dataset. An unusual transaction is a reason to investigate, not automatically an error.
 
 **Try the read-only public demo:** [Data Quality Studio](https://intelligent-data-quality-framework.vercel.app). It opens a 5,000-row Online Retail sample. [API health](https://intelligent-data-quality-api.onrender.com/health) may respond slowly after inactivity because the free service sleeps.
 
@@ -23,7 +23,7 @@ This project aims to build an automated framework that can:
 - Present results through an interactive dashboard
 - Generate a data-quality report
 
-### Planned Workflow
+### Workflow
 
     Dataset Upload
           ↓
@@ -243,6 +243,12 @@ The repository now has a free-hosting setup for a **read-only public sample**. I
 
 The live deployment was checked against its public sample: 5,000 rows, a 98.61 quality score, 877 anomaly-flagged rows, working charts and row explanations, and a downloadable PDF. Unknown dataset IDs return 404; demo write routes return 403. Only the Vercel production origin passes the API's configured CORS preflight. The GitHub Actions check for the deployment setup passed. These results describe the sample, not every possible dataset.
 
+### Phase 12 — Final Documentation & Polish ✅
+
+The dashboard now removes a workspace chevron that implied a menu, hides search when there is only one dataset, and drops navigation cards that repeated the section tabs. Plotly's unused Share control and extra toolbar buttons were removed. Quality errors offer a retry from the overview and charts. A retry refreshes quality without clearing the already loaded profile and anomaly results. The empty public-demo state explains that the free API may be waking up. The dataset header also stacks cleanly on phones.
+
+The final check covered the backend's 26 automated tests, Python compilation, and the production frontend build. The hosted sample and its controls were checked in a browser. See [project documentation](docs/Documentation.md) for the verification record and current limits.
+
 ---
 
 ## Assessment Capabilities
@@ -288,7 +294,7 @@ Business context used to distinguish legitimate unusual values from potential er
 - [x] Phase 9 — Interactive Visualizations
 - [x] Phase 10 — Report Generation
 - [x] Phase 11 — Deployment (free, read-only public demo)
-- [ ] Phase 12 — Final Documentation & Polish
+- [x] Phase 12 — Final Documentation & Polish
 
 ---
 
@@ -357,13 +363,13 @@ Detailed project development, technical decisions, verification, and limitations
 
     docs/Documentation.md
 
-The documentation is expanded as each development phase is completed.
+The documentation records the completed phases, verification evidence, and remaining limits.
 
 ---
 
 ## Project Goal
 
-The final objective is to build a deployable, enterprise-style data-quality platform that demonstrates practical skills in:
+The completed project demonstrates practical skills in:
 
 - Backend development
 - REST APIs

@@ -4,13 +4,13 @@
 
 The Intelligent Data Quality Assessment & Anomaly Detection Framework is an enterprise-style platform for examining structured datasets before they are trusted for reporting, analytics, or machine-learning work.
 
-The finished platform will allow a user to upload a dataset, automatically profile it, measure data quality, detect unusual observations, explain the findings, and present the results in a dashboard and report.
+Locally, a user can upload a dataset, profile it, measure data quality, investigate unusual observations, and download a report. The public website offers a read-only sample of that workflow.
 
 The project is built around real public data rather than fabricated examples. Its primary reference dataset is the UCI Online Retail dataset.
 
 ## 2. Current Status
 
-**Completed through Phase 11 — Deployment**
+**All 12 planned phases complete**
 
 The system can currently:
 
@@ -30,7 +30,7 @@ The system can currently:
 - Explore quality, missingness, anomaly signals, and field distributions with interactive charts.
 - Download a PDF assessment of the current stored dataset.
 
-The public, read-only sample is live at [Data Quality Studio](https://intelligent-data-quality-framework.vercel.app). The full upload workflow remains available locally. Phase 12 will review the interface, verify more end-to-end cases, and polish the final documentation.
+The public, read-only sample is live at [Data Quality Studio](https://intelligent-data-quality-framework.vercel.app). The full upload workflow remains available locally. The final interface review removed misleading and repeated controls and added recovery for failed quality requests.
 
 ---
 
@@ -253,7 +253,7 @@ The Excel-normalization flow was verified with the full 541,909-row, 8-column UC
 
 ### Current Scope Limitations
 
-The current implementation is deliberately a local development version. It reads the first worksheet of an Excel workbook, supports `.xlsx` rather than legacy `.xls`, processes files in memory, and stores normalized datasets on the local filesystem. File-size limits, multi-sheet selection, cloud object storage, and asynchronous processing are planned improvements rather than current requirements.
+The full upload workflow runs locally; the hosted demo is read-only. In local mode the app reads the first worksheet of an Excel workbook, supports `.xlsx` rather than legacy `.xls`, processes files in memory, and stores normalized datasets on the local filesystem. File-size limits, multi-sheet selection, cloud object storage, and asynchronous processing are possible future improvements, not implemented features.
 
 ---
 
@@ -581,8 +581,22 @@ The free backend can sleep when idle and can take about a minute to wake. Its fi
 | 9 | Interactive visualizations | Complete |
 | 10 | Report generation | Complete |
 | 11 | Deployment | Complete: free, read-only sample live |
-| 12 | Final documentation and polish | Planned |
+| 12 | Final documentation and polish | Complete |
 
-## 17. Next Step
+## 17. Phase 12 — Final Documentation and Polish
 
-Phase 12 will review the interface, verify end-to-end results, and polish the public documentation. Known concerns include visual clutter, repeated controls, and buttons whose behavior needs checking. The live sample checks in Phase 11 do not replace that broader review.
+### Interface Review
+
+The previous sidebar showed a chevron beside the workspace name without offering a menu. That decoration was removed. Search now appears only when there is more than one dataset, which keeps the single-sample demo simpler. The overview no longer repeats the Profile and Anomalies tabs as large action cards, and the page header is shorter. Plotly's Share button had no configured destination; it and extra chart toolbar buttons were removed, leaving PNG download, zoom, and reset. A failed quality request can be retried from the overview or quality chart. Quality retries no longer clear loaded profile or anomaly results. An empty hosted dataset list now explains that the free API may be waking up instead of suggesting an upload that the demo does not allow. Keyboard focus is visible on chart field selectors. The dataset header stacks on narrow phone screens.
+
+### Verification
+
+Backend compilation passed and all 26 automated tests passed. The frontend production build passed. The build still warns about the separately loaded Plotly bundle, around 381 kB compressed. The live sample's tabs, row review, chart controls, report download, and responsive layout were checked in the browser after the frontend update. These checks verify the public sample and core interactions; they do not certify every possible CSV or Excel file.
+
+### Remaining Limits
+
+The free Render service sleeps after inactivity, so the first request may be slow. It has temporary storage, and public uploads remain disabled. The local upload path processes files synchronously and has no dedicated large-file limit or cloud object storage. Retail-specific validity and consistency checks only run when their columns exist; the generic checks do not cover every possible domain rule. The database stores metadata, while profiles, scores, charts, anomaly results, and PDFs are recomputed on request. Hosted backend changes require manual Render deployment until its Git provider integration is connected.
+
+## 18. Status
+
+The planned project is complete as a portfolio demonstration. Further work can focus on newly found bugs, broader dataset trials, accessibility checks, and features chosen after using the finished workflow.
