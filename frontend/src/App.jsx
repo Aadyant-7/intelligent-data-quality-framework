@@ -39,7 +39,7 @@ function StatCard({ label, value, detail, tone = '' }) {
   )
 }
 
-function Sidebar({ datasets, selectedId, onSelect, loading, error, reload, file, setFile, uploading, uploadError, onUpload, search, setSearch, confirmClear, setConfirmClear, clearing, clearError, onClear }) {
+function Sidebar({ datasets, selectedId, onSelect, loading, error, reload, file, setFile, uploading, uploadError, onUpload, search, setSearch, confirmClear, setConfirmClear, clearing, clearError, onClear, removeId, setRemoveId, removingId, removeError, onRemove }) {
   const filtered = datasets.filter((dataset) =>
     dataset.file_name.toLowerCase().includes(search.toLowerCase()) || String(dataset.id).includes(search)
   )
@@ -59,15 +59,20 @@ function Sidebar({ datasets, selectedId, onSelect, loading, error, reload, file,
         {error && <div className="sidebar-message sidebar-error">{error}<button onClick={reload}>Retry</button></div>}
         {!loading && !error && filtered.length === 0 && <div className="sidebar-message">{datasets.length ? 'No matching datasets.' : 'No datasets yet. Upload one below.'}</div>}
         {filtered.map((dataset) => (
-          <button
-            key={dataset.id}
-            className={`dataset-item ${selectedId === dataset.id ? 'selected' : ''}`}
-            onClick={() => onSelect(dataset.id)}
-            aria-current={selectedId === dataset.id ? 'true' : undefined}
-          >
-            <span className="dataset-icon">▦</span>
-            <span className="dataset-text"><strong title={dataset.file_name}>{dataset.file_name}</strong><small>{formatNumber(dataset.rows_count, 0)} rows · #{dataset.id}</small></span>
-          </button>
+          <div className="dataset-entry" key={dataset.id}>
+            <div className="dataset-row">
+              <button className={`dataset-item ${selectedId === dataset.id ? 'selected' : ''}`} onClick={() => onSelect(dataset.id)} aria-current={selectedId === dataset.id ? 'true' : undefined}>
+                <span className="dataset-icon">▦</span>
+                <span className="dataset-text"><strong title={dataset.file_name}>{dataset.file_name}</strong><small>{formatNumber(dataset.rows_count, 0)} rows · #{dataset.id}</small></span>
+              </button>
+              {!DEMO_MODE && <button className="dataset-remove" aria-label={`Remove ${dataset.file_name}`} title={`Remove ${dataset.file_name}`} onClick={() => setRemoveId(dataset.id)} disabled={removingId !== null}>×</button>}
+            </div>
+            {removeId === dataset.id && <div className="dataset-remove-confirm">
+              <p>Remove {dataset.file_name} and identical saved copies?</p>
+              <div><button onClick={() => setRemoveId(null)} disabled={removingId !== null}>Cancel</button><button className="history-delete" onClick={() => onRemove(dataset.id)} disabled={removingId !== null}>{removingId === dataset.id ? 'Removing…' : 'Remove'}</button></div>
+              {removeError && <p className="history-error" role="alert">{removeError}</p>}
+            </div>}
+          </div>
         ))}
       </div>
 
@@ -211,6 +216,9 @@ export default function App() {
   const [confirmClear, setConfirmClear] = useState(false)
   const [clearing, setClearing] = useState(false)
   const [clearError, setClearError] = useState('')
+  const [removeId, setRemoveId] = useState(null)
+  const [removingId, setRemovingId] = useState(null)
+  const [removeError, setRemoveError] = useState('')
   const [notice, setNotice] = useState('')
   const [reporting, setReporting] = useState(false)
   const [reportError, setReportError] = useState('')
@@ -341,6 +349,27 @@ export default function App() {
     }
   }
 
+  async function handleRemoveDataset(id) {
+    setRemovingId(id)
+    setRemoveError('')
+    try {
+      const result = await api.removeDataset(id)
+      const remaining = datasets.filter((dataset) => dataset.id !== id)
+      setDatasets(remaining)
+      if (selectedId === id) {
+        setSelectedId(remaining[0]?.id ?? null)
+        setActiveTab('overview')
+      }
+      setRemoveId(null)
+      setNotice(`${result.deleted_records} saved record${result.deleted_records === 1 ? '' : 's'} removed.${result.file_errors ? ` ${result.file_errors} upload files could not be removed.` : ''}`)
+      setListReload((value) => value + 1)
+    } catch (error) {
+      setRemoveError(error.message)
+    } finally {
+      setRemovingId(null)
+    }
+  }
+
   async function handleReport() {
     if (!selectedId || reporting) return
     const reportId = selectedId
@@ -414,7 +443,7 @@ export default function App() {
   }
 
   return <div className="app-shell">
-    <Sidebar datasets={datasets} selectedId={selectedId} onSelect={chooseDataset} loading={listLoading} error={listError} reload={() => setListReload((value) => value + 1)} file={file} setFile={setFile} uploading={uploading} uploadError={uploadError} onUpload={handleUpload} search={search} setSearch={setSearch} confirmClear={confirmClear} setConfirmClear={setConfirmClear} clearing={clearing} clearError={clearError} onClear={handleClearHistory} />
+    <Sidebar datasets={datasets} selectedId={selectedId} onSelect={chooseDataset} loading={listLoading} error={listError} reload={() => setListReload((value) => value + 1)} file={file} setFile={setFile} uploading={uploading} uploadError={uploadError} onUpload={handleUpload} search={search} setSearch={setSearch} confirmClear={confirmClear} setConfirmClear={setConfirmClear} clearing={clearing} clearError={clearError} onClear={handleClearHistory} removeId={removeId} setRemoveId={(id) => { setRemoveId(id); setRemoveError('') }} removingId={removingId} removeError={removeError} onRemove={handleRemoveDataset} />
     <main className="main-content">
       <header className="topbar"><div><span className="eyebrow">INTELLIGENT DATA QUALITY FRAMEWORK</span><h1>Dataset review</h1></div></header>
       {notice && <div className="success-notice" role="status">✓ {notice}<button onClick={() => setNotice('')} aria-label="Dismiss notification">×</button></div>}

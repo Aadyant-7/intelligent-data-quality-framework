@@ -95,7 +95,7 @@ This project aims to build an automated framework that can:
 
 The hosted workspace is read-only. Run the project locally to upload your own CSV or `.xlsx` file.
 
-The local library shows one entry per distinct stored CSV and skips old records whose upload file is missing or has an invalid storage path. Uploading the same file again reuses its saved entry. **Clear history** offers a confirmation step before removing all local dataset records and their stored upload files; the public demo cannot use it.
+The local library shows one entry per distinct stored CSV and skips old records whose upload file is missing or has an invalid storage path. Uploading the same file again reuses its saved entry. The remove button beside an entry deletes that dataset and identical saved copies after confirmation. **Clear history** removes all local dataset records and their stored upload files after confirmation. To use a removed dataset again, re-upload the original file. Neither control is available in the public demo.
 
 **Open either version:** [Public sample demo](https://intelligent-data-quality-framework.vercel.app/) · [Local dashboard with uploads](http://127.0.0.1:5173/) (requires the local backend and frontend to be running).
 
@@ -353,6 +353,7 @@ Open `http://127.0.0.1:5173`. Keep the backend running at `http://127.0.0.1:8000
 | POST | `/datasets/upload` | Upload a CSV or Excel file and automatically create normalized dataset metadata |
 | GET | `/datasets` | Retrieve dataset metadata |
 | DELETE | `/datasets` | Clear local saved datasets and their upload files (disabled in demo mode) |
+| DELETE | `/datasets/{dataset_id}` | Remove one local dataset and identical saved copies (disabled in demo mode) |
 | GET | `/datasets/{dataset_id}/profile` | Generate a detailed profile for an uploaded dataset |
 | GET | `/datasets/{dataset_id}/quality` | Calculate explainable data-quality scores and issues |
 | GET | `/datasets/{dataset_id}/report` | Download the current quality and anomaly assessment as a PDF |

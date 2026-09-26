@@ -17,7 +17,7 @@ from app.services.anomaly_engine import (
     explain_dataset_row,
 )
 from app.services.data_profiler import profile_dataset
-from app.services.dataset_catalog import clear_dataset_history, list_available_datasets
+from app.services.dataset_catalog import clear_dataset_history, list_available_datasets, remove_dataset_group
 from app.services.dataset_ingestion import ingest_dataset
 from app.services.demo_seed import DEMO_DATASET_PATH, seed_demo_dataset
 from app.services.dataset_storage import resolve_dataset_path
@@ -42,10 +42,10 @@ app = FastAPI(lifespan=lifespan)
 async def demo_write_guard(request: Request, call_next):
     if DEMO_MODE and (
         (request.method == "POST" and request.url.path in {"/datasets", "/datasets/upload"})
-        or (request.method == "DELETE" and request.url.path == "/datasets")
+        or (request.method == "DELETE" and (request.url.path == "/datasets" or request.url.path.startswith("/datasets/")))
     ):
         detail = (
-            "Dataset history cannot be cleared in the public demo."
+            "Dataset deletion is disabled in the public demo."
             if request.method == "DELETE" else "Uploads are disabled in the public demo."
         )
         return JSONResponse(status_code=403, content={"detail": detail})
@@ -194,3 +194,9 @@ def get_datasets(db: Session = Depends(get_db)):
 def clear_datasets(db: Session = Depends(get_db)):
     _require_writable_workspace()
     return clear_dataset_history(db)
+
+
+@app.delete("/datasets/{dataset_id}")
+def remove_dataset(dataset_id: int, db: Session = Depends(get_db)):
+    _require_writable_workspace()
+    return remove_dataset_group(db, dataset_id)

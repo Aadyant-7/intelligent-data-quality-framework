@@ -37,6 +37,7 @@ async function request(path, options = {}, responseType = 'json') {
 export const api = {
   datasets: (signal) => request('/datasets', { signal }),
   clearHistory: () => request('/datasets', { method: 'DELETE' }),
+  removeDataset: (id) => request(`/datasets/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   profile: (id, signal) => request(`/datasets/${encodeURIComponent(id)}/profile`, { signal }),
   quality: (id, signal) => request(`/datasets/${encodeURIComponent(id)}/quality`, { signal }),
   report: (id) => request(`/datasets/${encodeURIComponent(id)}/report`, {}, 'blob'),

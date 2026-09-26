@@ -76,3 +76,41 @@ def clear_dataset_history(db: Session) -> dict[str, int]:
         except OSError:
             file_errors += 1
     return {"deleted_records": len(records), "deleted_files": removed_files, "file_errors": file_errors}
+
+
+def remove_dataset_group(db: Session, dataset_id: int) -> dict[str, int]:
+    """Remove one visible dataset and identical older copies so it stays gone."""
+    selected = db.get(Dataset, dataset_id)
+    if selected is None:
+        raise HTTPException(status_code=404, detail="Dataset not found.")
+
+    selected_path = _existing_path(selected)
+    fingerprint = _fingerprint(selected_path) if selected_path is not None else None
+    records = [selected]
+    paths = {selected_path} if selected_path is not None else set()
+    if fingerprint is not None:
+        for candidate in db.query(Dataset).filter(Dataset.id != dataset_id):
+            path = _existing_path(candidate)
+            if path is None:
+                continue
+            try:
+                if _fingerprint(path) == fingerprint:
+                    records.append(candidate)
+                    paths.add(path)
+            except OSError:
+                continue
+
+    db.query(Dataset).filter(Dataset.id.in_([record.id for record in records])).delete(
+        synchronize_session=False
+    )
+    db.commit()
+
+    removed_files = 0
+    file_errors = 0
+    for path in paths:
+        try:
+            path.unlink(missing_ok=True)
+            removed_files += 1
+        except OSError:
+            file_errors += 1
+    return {"deleted_records": len(records), "deleted_files": removed_files, "file_errors": file_errors}
