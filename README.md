@@ -95,6 +95,8 @@ This project aims to build an automated framework that can:
 
 The hosted workspace is read-only. Run the project locally to upload your own CSV or `.xlsx` file.
 
+The local library shows one entry per distinct stored CSV and skips old records whose upload file is missing or has an invalid storage path. Uploading the same file again reuses its saved entry. **Clear history** offers a confirmation step before removing all local dataset records and their stored upload files; the public demo cannot use it.
+
 **Open either version:** [Public sample demo](https://intelligent-data-quality-framework.vercel.app/) · [Local dashboard with uploads](http://127.0.0.1:5173/) (requires the local backend and frontend to be running).
 
 ---
@@ -350,6 +352,7 @@ Open `http://127.0.0.1:5173`. Keep the backend running at `http://127.0.0.1:8000
 | POST | `/datasets` | Store dataset metadata |
 | POST | `/datasets/upload` | Upload a CSV or Excel file and automatically create normalized dataset metadata |
 | GET | `/datasets` | Retrieve dataset metadata |
+| DELETE | `/datasets` | Clear local saved datasets and their upload files (disabled in demo mode) |
 | GET | `/datasets/{dataset_id}/profile` | Generate a detailed profile for an uploaded dataset |
 | GET | `/datasets/{dataset_id}/quality` | Calculate explainable data-quality scores and issues |
 | GET | `/datasets/{dataset_id}/report` | Download the current quality and anomaly assessment as a PDF |
@@ -370,6 +373,10 @@ The documentation records the completed phases, verification evidence, and remai
 ### Stabilization review (September 2026)
 
 A three-pass QA review checked upload, profiling, scoring, anomalies, explanations, charts, reports, the React dashboard, and the hosted sample. Two reproduced edge cases were fixed: a damaged `.xlsx` archive now returns HTTP 400 and removes its temporary file, and numeric profile values that JSON cannot represent (such as infinity) now appear as `null` instead of crashing the response. The final backend suite passed 28 tests, backend compilation and the frontend production build passed, and the local retail sample still returned a 98.61 quality score and 877 flagged rows. The public demo remains read-only; local uploads are available when both local servers are running. See the detailed QA record in `docs/Documentation.md`.
+
+### Local library follow-up (September 2026)
+
+The local list now hides missing-file records and repeated copies by comparing normalized CSV content. Re-uploading identical content does not add another record or file. A two-step **Clear history** control deletes all local dataset records and their stored uploads when confirmed; it also clears older entries hidden from the list. The dashboard scrollbars now use colors from its light and dark themes. The existing 11 local records produced 3 usable, distinct entries without deleting the other records. An isolated API check verified repeat-upload reuse and complete cleanup after an explicit delete; 33 backend tests and the frontend build passed.
 
 ---
 

@@ -42,6 +42,19 @@ class DemoRouteTests(unittest.TestCase):
                 main._get_dataset(db, other.id)
         self.assertEqual(hidden.exception.status_code, 404)
 
+    def test_demo_rejects_clear_history_before_database_changes(self):
+        request = Request({
+            "type": "http", "method": "DELETE", "path": "/datasets",
+            "headers": [], "scheme": "http", "server": ("testserver", 80),
+        })
+
+        async def should_not_continue(_request):
+            self.fail("The public demo must not reach the clear route.")
+
+        with patch.object(main, "DEMO_MODE", True):
+            response = asyncio.run(main.demo_write_guard(request, should_not_continue))
+        self.assertEqual(response.status_code, 403)
+
 
 if __name__ == "__main__":
     unittest.main()

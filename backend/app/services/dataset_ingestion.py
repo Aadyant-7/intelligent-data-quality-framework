@@ -10,6 +10,7 @@ from fastapi import HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from app.models import Dataset
+from app.services.dataset_catalog import find_duplicate_dataset
 from app.services.dataset_storage import UPLOAD_DIRECTORY
 
 
@@ -63,6 +64,11 @@ def ingest_dataset(file: UploadFile, db: Session) -> Dataset:
 
     if normalized_file_path is None:
         raise HTTPException(status_code=500, detail="Dataset normalization did not complete.")
+
+    existing = find_duplicate_dataset(db, normalized_file_path, len(dataframe.index), len(dataframe.columns))
+    if existing is not None:
+        normalized_file_path.unlink(missing_ok=True)
+        return existing
 
     dataset = Dataset(
         file_name=original_filename,

@@ -39,7 +39,7 @@ function StatCard({ label, value, detail, tone = '' }) {
   )
 }
 
-function Sidebar({ datasets, selectedId, onSelect, loading, error, reload, file, setFile, uploading, uploadError, onUpload, search, setSearch }) {
+function Sidebar({ datasets, selectedId, onSelect, loading, error, reload, file, setFile, uploading, uploadError, onUpload, search, setSearch, confirmClear, setConfirmClear, clearing, clearError, onClear }) {
   const filtered = datasets.filter((dataset) =>
     dataset.file_name.toLowerCase().includes(search.toLowerCase()) || String(dataset.id).includes(search)
   )
@@ -70,6 +70,15 @@ function Sidebar({ datasets, selectedId, onSelect, loading, error, reload, file,
           </button>
         ))}
       </div>
+
+      {!DEMO_MODE && <div className="history-actions">
+        {!confirmClear ? <button className="history-link" onClick={() => setConfirmClear(true)} disabled={clearing}>Clear history</button> : <div className="history-confirm">
+          <strong>Clear all saved datasets?</strong>
+          <p>This deletes local uploads and saved records, including older entries hidden from this list.</p>
+          <div><button onClick={() => setConfirmClear(false)} disabled={clearing}>Cancel</button><button className="history-delete" onClick={onClear} disabled={clearing}>{clearing ? 'Clearing…' : 'Delete all'}</button></div>
+        </div>}
+        {clearError && <p className="history-error" role="alert">{clearError}</p>}
+      </div>}
 
       {DEMO_MODE ? <div className="sidebar-message demo-note">Public sample demo. Uploads are available when you run the project locally.</div> : <form className="upload-card" onSubmit={onUpload}>
         <span className="upload-symbol" aria-hidden="true">↥</span>
@@ -199,6 +208,9 @@ export default function App() {
   const [file, setFile] = useState(null)
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState('')
+  const [confirmClear, setConfirmClear] = useState(false)
+  const [clearing, setClearing] = useState(false)
+  const [clearError, setClearError] = useState('')
   const [notice, setNotice] = useState('')
   const [reporting, setReporting] = useState(false)
   const [reportError, setReportError] = useState('')
@@ -308,6 +320,27 @@ export default function App() {
     setReportError('')
   }
 
+  async function handleClearHistory() {
+    setClearing(true)
+    setClearError('')
+    try {
+      const result = await api.clearHistory()
+      setDatasets([])
+      setSelectedId(null)
+      setSearch('')
+      setFile(null)
+      setConfirmClear(false)
+      profileCache.current.clear()
+      anomalyCache.current.clear()
+      visualAnomalyCache.current.clear()
+      setNotice(`${result.deleted_records} saved dataset records removed.${result.file_errors ? ` ${result.file_errors} upload files could not be removed.` : ''}`)
+    } catch (error) {
+      setClearError(error.message)
+    } finally {
+      setClearing(false)
+    }
+  }
+
   async function handleReport() {
     if (!selectedId || reporting) return
     const reportId = selectedId
@@ -339,11 +372,12 @@ export default function App() {
     setNotice('')
     try {
       const created = await api.upload(file)
+      const alreadySaved = datasets.some((dataset) => dataset.id === created.id)
       setDatasets((current) => [created, ...current.filter((item) => item.id !== created.id)])
       chooseDataset(created.id)
       setFile(null)
       formElement.reset()
-      setNotice(`${created.file_name} uploaded and ready to inspect.`)
+      setNotice(alreadySaved ? `${created.file_name} is already saved. Showing its existing analysis.` : `${created.file_name} uploaded and ready to inspect.`)
     } catch (error) {
       setUploadError(error.message)
     } finally {
@@ -380,7 +414,7 @@ export default function App() {
   }
 
   return <div className="app-shell">
-    <Sidebar datasets={datasets} selectedId={selectedId} onSelect={chooseDataset} loading={listLoading} error={listError} reload={() => setListReload((value) => value + 1)} file={file} setFile={setFile} uploading={uploading} uploadError={uploadError} onUpload={handleUpload} search={search} setSearch={setSearch} />
+    <Sidebar datasets={datasets} selectedId={selectedId} onSelect={chooseDataset} loading={listLoading} error={listError} reload={() => setListReload((value) => value + 1)} file={file} setFile={setFile} uploading={uploading} uploadError={uploadError} onUpload={handleUpload} search={search} setSearch={setSearch} confirmClear={confirmClear} setConfirmClear={setConfirmClear} clearing={clearing} clearError={clearError} onClear={handleClearHistory} />
     <main className="main-content">
       <header className="topbar"><div><span className="eyebrow">INTELLIGENT DATA QUALITY FRAMEWORK</span><h1>Dataset review</h1></div></header>
       {notice && <div className="success-notice" role="status">✓ {notice}<button onClick={() => setNotice('')} aria-label="Dismiss notification">×</button></div>}

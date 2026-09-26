@@ -17,6 +17,7 @@ from app.services.anomaly_engine import (
     explain_dataset_row,
 )
 from app.services.data_profiler import profile_dataset
+from app.services.dataset_catalog import clear_dataset_history, list_available_datasets
 from app.services.dataset_ingestion import ingest_dataset
 from app.services.demo_seed import DEMO_DATASET_PATH, seed_demo_dataset
 from app.services.dataset_storage import resolve_dataset_path
@@ -39,8 +40,15 @@ app = FastAPI(lifespan=lifespan)
 
 @app.middleware("http")
 async def demo_write_guard(request: Request, call_next):
-    if DEMO_MODE and request.method == "POST" and request.url.path in {"/datasets", "/datasets/upload"}:
-        return JSONResponse(status_code=403, content={"detail": "Uploads are disabled in the public demo."})
+    if DEMO_MODE and (
+        (request.method == "POST" and request.url.path in {"/datasets", "/datasets/upload"})
+        or (request.method == "DELETE" and request.url.path == "/datasets")
+    ):
+        detail = (
+            "Dataset history cannot be cleared in the public demo."
+            if request.method == "DELETE" else "Uploads are disabled in the public demo."
+        )
+        return JSONResponse(status_code=403, content={"detail": detail})
     return await call_next(request)
 
 
@@ -48,7 +56,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
     allow_credentials=False,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["Content-Type"],
 )
 
@@ -179,6 +187,10 @@ def get_datasets(db: Session = Depends(get_db)):
     query = db.query(Dataset)
     if DEMO_MODE:
         query = query.filter(Dataset.file_path == DEMO_DATASET_PATH)
-    datasets = query.all()
+    return list_available_datasets(query.all())
 
-    return datasets
+
+@app.delete("/datasets")
+def clear_datasets(db: Session = Depends(get_db)):
+    _require_writable_workspace()
+    return clear_dataset_history(db)
