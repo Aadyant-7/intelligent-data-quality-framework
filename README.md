@@ -4,6 +4,8 @@ An enterprise-style data analytics platform designed to automatically profile st
 
 The project is being developed around real-world transactional data rather than a fabricated demonstration dataset.
 
+**Try the read-only public demo:** [Data Quality Studio](https://intelligent-data-quality-framework.vercel.app). It opens a 5,000-row Online Retail sample. [API health](https://intelligent-data-quality-api.onrender.com/health) may respond slowly after inactivity because the free service sleeps.
+
 ---
 
 ## Project Overview
@@ -84,14 +86,14 @@ This project aims to build an automated framework that can:
 - Git
 - GitHub
 
-### Deployment preparation
+### Deployment
 
-- Vercel configuration for the React frontend
-- Render Blueprint for a sample-only FastAPI service
-- Neon PostgreSQL as the intended hosted metadata database
-- GitHub Actions build and test checks
+- Vercel Hobby hosts the React frontend
+- Render Free hosts the sample-only FastAPI service from `render.yaml`
+- Neon Free stores the hosted sample's metadata in PostgreSQL
+- GitHub Actions checks backend tests and the demo frontend build
 
-The public demo is prepared but has no live URL yet. Provider accounts and hosted configuration are still required.
+The hosted workspace is read-only. Run the project locally to upload your own CSV or `.xlsx` file.
 
 ---
 
@@ -231,13 +233,15 @@ Implemented:
 
 The report recalculates results from the stored normalized CSV when requested. It does not save analysis in PostgreSQL or treat unusual records as proven errors. PDF generation runs during the request, so large datasets can take several seconds.
 
-### Phase 11 — Deployment preparation (in progress)
+### Phase 11 — Deployment ✅
 
 The repository now has a free-hosting setup for a **read-only public sample**. In hosted demo mode, startup restores the tracked 5,000-row retail sample, the API lists only that sample, and both upload and manual metadata creation are rejected. The website labels this mode and hides its upload form. Local development keeps the full CSV and `.xlsx` upload workflow.
 
 `render.yaml` describes the free backend service, and `frontend/vercel.json` supports the Vite single-page frontend. Hosted secrets and the allowed frontend origin are configured in provider settings, not in Git. `/health` is a lightweight hosting check; `/ready` also checks the database on demand. A GitHub Actions workflow checks backend tests and a demo frontend build.
 
-**Deployment status:** configuration and local checks are complete; a live Render, Vercel, and Neon deployment is pending provider accounts. No live service has been verified. The free backend filesystem is temporary, which is why the hosted demo does not accept user uploads.
+**Live deployment:** [React dashboard](https://intelligent-data-quality-framework.vercel.app) · [FastAPI service](https://intelligent-data-quality-api.onrender.com) · Neon Free metadata database. The free backend filesystem is temporary, so the hosted demo does not accept user uploads. Render can take around a minute to wake after inactivity; the tracked sample is restored when the service starts.
+
+The live deployment was checked against its public sample: 5,000 rows, a 98.61 quality score, 877 anomaly-flagged rows, working charts and row explanations, and a downloadable PDF. Unknown dataset IDs return 404; demo write routes return 403. Only the Vercel production origin passes the API's configured CORS preflight. The GitHub Actions check for the deployment setup passed. These results describe the sample, not every possible dataset.
 
 ---
 
@@ -283,7 +287,7 @@ Business context used to distinguish legitimate unusual values from potential er
 - [x] Phase 8 — React Dashboard
 - [x] Phase 9 — Interactive Visualizations
 - [x] Phase 10 — Report Generation
-- [ ] Phase 11 — Deployment (configuration ready; live launch pending)
+- [x] Phase 11 — Deployment (free, read-only public demo)
 - [ ] Phase 12 — Final Documentation & Polish
 
 ---

@@ -10,7 +10,7 @@ The project is built around real public data rather than fabricated examples. It
 
 ## 2. Current Status
 
-**Completed through Phase 10 — Report Generation**
+**Completed through Phase 11 — Deployment**
 
 The system can currently:
 
@@ -30,7 +30,7 @@ The system can currently:
 - Explore quality, missingness, anomaly signals, and field distributions with interactive charts.
 - Download a PDF assessment of the current stored dataset.
 
-Phase 11 deployment preparation is underway. The free, sample-only hosting configuration and local checks are ready; a live deployment awaits provider accounts.
+The public, read-only sample is live at [Data Quality Studio](https://intelligent-data-quality-framework.vercel.app). The full upload workflow remains available locally. Phase 12 will review the interface, verify more end-to-end cases, and polish the final documentation.
 
 ---
 
@@ -463,7 +463,7 @@ The interface shows loading, empty, and error states. Failed profile, quality, a
 
 `frontend/src/App.jsx` owns selection, tab state, data loading, and the views. `frontend/src/api.js` contains the HTTP calls and error handling; `frontend/src/format.js` contains display formatting; `frontend/src/styles.css` contains layout and responsive rules. Profile and anomaly pages are fetched when opened and cached for the current session. A dataset switch cancels in-flight requests and starts a fresh quality request.
 
-Run the backend on `127.0.0.1:8000`, then run `npm ci` and `npm run dev` from `frontend/`. Open `http://127.0.0.1:5173`. The Vite development proxy forwards `/api` to the backend, so no separate browser CORS configuration is needed for this local setup. `npm run build` creates the production frontend bundle; deployment is planned for Phase 11.
+Run the backend on `127.0.0.1:8000`, then run `npm ci` and `npm run dev` from `frontend/`. Open `http://127.0.0.1:5173`. The Vite development proxy forwards `/api` to the backend, so no separate browser CORS configuration is needed for this local setup. `npm run build` creates the production frontend bundle. The separate hosted sample uses the Vercel and Render configuration described in Phase 11.
 
 ### Verification and Limits
 
@@ -471,7 +471,7 @@ The production build passed and npm's audit found no known vulnerabilities in th
 
 This phase also corrected a backend explanation label from `Z_SCORE` to `Z-score`; backend compilation and all 14 regression tests passed, and the live row explanation showed the corrected wording.
 
-The dashboard is a local development application. Authentication, hosted storage, and deployment remain future work. Analysis remains calculated on request by the backend. Dataset IDs above refer only to this local development database.
+The dashboard is available locally with uploads and online as a read-only sample. Authentication and persistent hosted upload storage remain future work. Analysis remains calculated on request by the backend. Dataset IDs above refer only to the local development database.
 
 ---
 
@@ -522,11 +522,11 @@ The PDF is a point-in-time assessment of local data, not a certification. Generi
 
 ---
 
-## 14. Phase 11 — Deployment Preparation
+## 14. Phase 11 — Deployment
 
 ### Hosted Mode
 
-The user chose a free public demo rather than paid persistent upload storage. The proposed split is a Vercel Vite frontend, a Render Free FastAPI service, and a Neon PostgreSQL database for metadata. `render.yaml` defines the backend build, startup command, Python version, and lightweight `/health` check. The Vercel project must use `frontend/` as its root directory; `frontend/vercel.json` provides a single-page fallback. A GitHub Actions workflow compiles and tests the backend and builds the demo frontend. The workflow is committed but its hosted run has not yet been verified.
+The user chose a free public demo rather than paid persistent upload storage. [Vercel](https://intelligent-data-quality-framework.vercel.app) hosts the Vite frontend, [Render](https://intelligent-data-quality-api.onrender.com) runs FastAPI on a Free web service, and Neon Free PostgreSQL stores metadata. `render.yaml` defines the backend build, startup command, Python version, and lightweight `/health` check. The Vercel project uses `frontend/` as its root directory; `frontend/vercel.json` provides a single-page fallback. A GitHub Actions workflow compiles and tests the backend and builds the demo frontend. Its deployment-preparation run passed.
 
 With `DEMO_MODE=true`, the backend copies the tracked public 5,000-row retail sample to its runtime upload folder at startup and creates or reuses one metadata record. This restores the sample after an ephemeral restart. The API lists only that record, hides other dataset IDs, and rejects upload and manual metadata creation. The frontend uses `VITE_DEMO_MODE=true` to label the public sample and hide its upload form. The full upload workflow remains available when running locally without demo mode. The hosted demo does not retain user uploads because Render Free storage is temporary.
 
@@ -534,16 +534,15 @@ With `DEMO_MODE=true`, the backend copies the tracked public 5,000-row retail sa
 
 ### Local Verification
 
-Backend compilation and all 26 automated tests passed. An isolated SQLite-backed demo server started with the public sample and returned one 5,000-row dataset, quality score 98.61, 877 flagged rows, and a PDF response. Unknown IDs returned 404; upload and valid metadata creation returned 403. The demo write guard runs before multipart parsing, so blocked uploads do not consume file-processing resources. A configured browser origin passed CORS preflight, while an unlisted origin was rejected. The demo website showed one sample, no upload form, and working charts. The regular local mode still listed its existing datasets and returned the sample quality and report, with 404 for an unknown ID. A Vite demo build passed; the existing Plotly bundle-size warning remains. These are local checks, not proof of a successful cloud deployment.
+Backend compilation and all 26 automated tests passed. An isolated SQLite-backed demo server started with the public sample and returned one 5,000-row dataset, quality score 98.61, 877 flagged rows, and a PDF response. Unknown IDs returned 404; upload and valid metadata creation returned 403. The demo write guard runs before multipart parsing, so blocked uploads do not consume file-processing resources. A configured browser origin passed CORS preflight, while an unlisted origin was rejected. The regular local mode still listed its existing datasets and returned the sample quality and report, with 404 for an unknown ID. A Vite demo build passed; the existing Plotly bundle-size warning remains.
 
-### Live Launch Still Needed
+### Live Verification
 
-1. Create a free Neon project and obtain its PostgreSQL connection string through Neon's private console.
-2. Import this repository as a Render Blueprint. Enter `DATABASE_URL` privately and set `CORS_ORIGINS` to the eventual Vercel production origin. Deploy the free service and check `/health` and `/ready`.
-3. Import the repository into Vercel with root directory `frontend/`. Set `VITE_DEMO_MODE=true` and `VITE_API_BASE_URL` to the Render service's HTTPS origin. Build and deploy.
-4. Update Render's `CORS_ORIGINS` to the exact deployed Vercel origin, then verify the dashboard, charts, report, 403 write protection, and 404 unknown ID from the live site.
+On 2026-09-26, the deployed API returned 200 from `/health` and `ready` from `/ready`. `/datasets` exposed only the public 5,000-row sample. The sample returned a 98.61 quality score, 877 distinct flagged rows, a Quantity visualization, a profile, and a 200 PDF response (`application/pdf`). The live dashboard loaded the sample, quality evidence, profile, charts, anomaly paging, and a row explanation without browser console errors. An unknown dataset ID returned 404; both write routes returned 403. CORS preflight accepted `https://intelligent-data-quality-framework.vercel.app` and rejected an unlisted origin.
 
-Provider accounts were not ready during this phase, so no hosted service or public URL has been created or verified. Do not mark Phase 11 complete until those live checks pass. Provider limits and setup details can change; consult the current [Render FastAPI](https://render.com/docs/deploy-fastapi), [Render Free](https://render.com/docs/free), [Vercel Vite](https://vercel.com/docs/frameworks/frontend/vite), and [Neon](https://neon.com/docs) documentation when creating the services.
+The first Render startup failed because a copied connection string had a space inside its hostname. The private Render setting was corrected and the next deployment started successfully. No connection string was added to Git. Render was created from the public repository URL, so automatic redeploys from later Git pushes are unavailable until a Git provider connection is added; a manual Blueprint sync or deploy is needed for backend changes. Vercel is connected to the GitHub repository and deploys its `frontend/` root.
+
+The free backend can sleep when idle and can take about a minute to wake. Its filesystem is temporary; the public sample is restored at startup, and uploads are disabled. This is a portfolio demo, not a persistent multi-user service. Provider limits can change; see [Render Free](https://render.com/docs/free), [Vercel Vite](https://vercel.com/docs/frameworks/frontend/vite), and [Neon](https://neon.com/docs).
 
 ---
 
@@ -560,7 +559,7 @@ Provider accounts were not ready during this phase, so no hosted service or publ
 | Pandas | Reading, converting, and profiling datasets |
 | OpenPyXL | Excel `.xlsx` support for Pandas |
 | NumPy and scikit-learn | Numeric anomaly calculations and Isolation Forest |
-| React and Vite | Local dashboard and frontend development/build tooling |
+| React and Vite | Local dashboard and hosted frontend build |
 | Plotly.js | Interactive charts in the dashboard |
 | ReportLab | PDF assessment layout and export |
 | Git and GitHub | Version control and public project history |
@@ -581,9 +580,9 @@ Provider accounts were not ready during this phase, so no hosted service or publ
 | 8 | React dashboard | Complete |
 | 9 | Interactive visualizations | Complete |
 | 10 | Report generation | Complete |
-| 11 | Deployment | In progress: configuration ready; live launch pending |
+| 11 | Deployment | Complete: free, read-only sample live |
 | 12 | Final documentation and polish | Planned |
 
 ## 17. Next Step
 
-Complete the live sample-only deployment and its smoke checks after the Render, Vercel, and Neon accounts are ready. Phase 12 will then review the interface, verify end-to-end results, and polish the public documentation.
+Phase 12 will review the interface, verify end-to-end results, and polish the public documentation. Known concerns include visual clutter, repeated controls, and buttons whose behavior needs checking. The live sample checks in Phase 11 do not replace that broader review.
