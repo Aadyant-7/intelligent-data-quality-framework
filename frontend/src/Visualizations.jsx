@@ -4,16 +4,18 @@ import { formatNumber, titleCase } from './format'
 import PlotChart from './PlotChart'
 
 const GREEN = '#51ad95'
-const BLUE = '#527f98'
+const CATEGORY_COLORS = ['#458e83', '#6a8fb1', '#d59b62', '#9d83ba', '#d77e75', '#8cae65']
+const signalColor = (label) => label.startsWith('IQR ') ? '#648bab'
+  : label.startsWith('Z-score ') ? '#9d83ba' : '#d38a70'
 const BAR_LAYOUT = {
   xaxis: { title: { text: 'Rows' }, rangemode: 'tozero', gridcolor: '#edf2f0', zeroline: false },
-  yaxis: { autorange: 'reversed', automargin: true, tickfont: { size: 10 } },
-  margin: { l: 135, r: 22, t: 12, b: 52 },
+  yaxis: { autorange: 'reversed', automargin: true, tickfont: { size: 11 }, ticklabelstandoff: 10 },
+  margin: { l: 160, r: 22, t: 12, b: 52 },
   showlegend: false,
 }
 
 function horizontalBars(labels, counts, color = GREEN, unit = 'rows') {
-  return [{ type: 'bar', orientation: 'h', x: counts, y: labels.map((label) => label.length > 27 ? `${label.slice(0, 24)}…` : label),
+  return [{ type: 'bar', orientation: 'h', width: 0.54, x: counts, y: labels.map((label) => label.length > 27 ? `${label.slice(0, 24)}…` : label),
     customdata: labels, marker: { color, line: { color: '#ffffff', width: 1 } },
     hovertemplate: `%{customdata}<br>%{x:,} ${unit}<extra></extra>` }]
 }
@@ -44,6 +46,7 @@ function Distribution({ datasetId, columns }) {
   const available = useMemo(() => columns.filter((column) => ['numeric', 'categorical', 'datetime'].includes(column.logical_type)), [columns])
   const [selectedColumn, setSelectedColumn] = useState('')
   const [range, setRange] = useState('central')
+  const [view, setView] = useState('bars')
   const [state, setState] = useState({ data: null, loading: false, error: '' })
   const [reload, setReload] = useState(0)
   const cache = useRef(new Map())
@@ -73,15 +76,28 @@ function Distribution({ datasetId, columns }) {
   }, [datasetId, selectedColumn, reload])
 
   const data = state.data
+  const canShowShare = data?.status === 'evaluated' && (
+    (data.logical_type === 'categorical' || (data.logical_type === 'numeric' && data.distribution_kind === 'discrete'))
+    && data.categories.length + (data.other_count ? 1 : 0) <= 6
+  )
   const chart = useMemo(() => {
     if (!data || data.status !== 'evaluated') return null
+    if (view === 'share' && canShowShare) {
+      const labels = data.categories.map((item) => item.value)
+      const counts = data.categories.map((item) => item.count)
+      if (data.other_count) { labels.push('Other categories'); counts.push(data.other_count) }
+      return { traces: [{ type: 'pie', labels, values: counts, hole: 0.66, sort: false,
+        textinfo: 'none', marker: { colors: CATEGORY_COLORS, line: { color: '#fff', width: 2 } },
+        hovertemplate: '%{label}<br>%{value:,} rows · %{percent}<extra></extra>' }],
+      layout: { showlegend: true, legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.08, font: { size: 11 } },
+        margin: { l: 24, r: 24, t: 8, b: 42 }, annotations: [{ text: `${formatNumber(data.usable_count, 0)}<br>usable rows`,
+          x: 0.5, y: 0.5, showarrow: false, font: { size: 13, color: '#31575a' } }] }, labels, counts }
+    }
     if (data.logical_type === 'numeric' && data.distribution_kind === 'discrete') {
       const labels = data.categories.map((item) => item.value)
       const counts = data.categories.map((item) => item.count)
-      return { traces: [{ type: 'bar', x: labels, y: counts, marker: { color: GREEN },
-        hovertemplate: '%{x}<br>%{y:,} rows<extra></extra>' }],
-        layout: { xaxis: { title: { text: data.column }, type: 'category' }, yaxis: { title: { text: 'Rows' }, rangemode: 'tozero', gridcolor: '#edf2f0' }, margin: { l: 62, r: 22, t: 12, b: 58 } },
-        labels, counts }
+      return { traces: horizontalBars(labels, counts, labels.map((_, index) => CATEGORY_COLORS[index % CATEGORY_COLORS.length])),
+        layout: BAR_LAYOUT, labels, counts, height: Math.max(210, labels.length * 32 + 75) }
     }
     if (data.logical_type === 'numeric') {
       const bins = range === 'central' ? data.central_range : data.full_range
@@ -105,26 +121,31 @@ function Distribution({ datasetId, columns }) {
     const labels = data.categories.map((item) => item.value)
     const counts = data.categories.map((item) => item.count)
     if (data.other_count) { labels.push('Other categories'); counts.push(data.other_count) }
-    return { traces: horizontalBars(labels, counts), layout: BAR_LAYOUT, labels, counts }
-  }, [data, range])
+    return { traces: horizontalBars(labels, counts, labels.map((_, index) => CATEGORY_COLORS[index % CATEGORY_COLORS.length])), layout: BAR_LAYOUT, labels, counts }
+  }, [data, range, view, canShowShare])
 
   return <ChartPanel eyebrow="FIELD EXPLORER" title="Explore a field" note="Compare the values within one field. Hover for exact counts; drag to zoom.">
     {available.length ? <>
-      <div className="chart-controls"><label htmlFor="chart-column">Field</label><select id="chart-column" value={selectedColumn} onChange={(event) => { setSelectedColumn(event.target.value); setRange('central') }}>
+      <div className="chart-controls"><label htmlFor="chart-column">Field</label><select id="chart-column" value={selectedColumn} onChange={(event) => { setSelectedColumn(event.target.value); setRange('central'); setView('bars') }}>
         {available.map((column) => <option key={column.name} value={column.name}>{column.name} · {titleCase(column.logical_type)}</option>)}
       </select>
       {data?.logical_type === 'numeric' && data?.distribution_kind !== 'discrete' && <div className="chart-toggle" aria-label="Numeric range">
         <button className={range === 'central' ? 'active' : ''} onClick={() => setRange('central')}>Typical range</button>
         <button className={range === 'full' ? 'active' : ''} onClick={() => setRange('full')}>Full range</button>
+      </div>}
+      {canShowShare && <div className="chart-toggle" aria-label="Chart view">
+        <button type="button" className={view === 'bars' ? 'active' : ''} aria-pressed={view === 'bars'} onClick={() => setView('bars')}>Bars</button>
+        <button type="button" className={view === 'share' ? 'active' : ''} aria-pressed={view === 'share'} onClick={() => setView('share')}>Share</button>
       </div>}</div>
       {state.loading && <p className="chart-loading" role="status">Counting field values…</p>}
       {state.error && <div className="chart-error" role="alert">{state.error} <button className="text-button" onClick={() => setReload((value) => value + 1)}>Try again</button></div>}
       {data?.status === 'not_evaluated' && <p className="chart-empty">{data.reason}</p>}
       {chart && <>
-        <PlotChart data={chart.traces} layout={chart.layout} label={`${data.column} distribution`} height={340} />
+        <PlotChart data={chart.traces} layout={chart.layout} label={`${data.column} distribution`} height={chart.height ?? 340} />
         <p className="chart-caption">{formatNumber(data.usable_count, 0)} usable rows · {formatNumber(data.missing_count, 0)} missing{data.excluded_nonfinite_count ? ` · ${formatNumber(data.excluded_nonfinite_count, 0)} infinite values excluded` : ''}.
           {data.logical_type === 'numeric' && data.distribution_kind !== 'discrete' && range === 'central' ? ` Typical range uses the 1st–99th percentiles; ${formatNumber(data.outside_central_count, 0)} finite rows outside it are excluded from this view.` : ''}
-          {data.logical_type === 'numeric' && data.distribution_kind === 'discrete' ? ' Each bar is an actual value, not a histogram range.' : ''}
+          {data.logical_type === 'numeric' && data.distribution_kind === 'discrete' && view === 'bars' ? ' Each bar is an actual value, not a histogram range.' : ''}
+          {view === 'share' ? ' Slices show each value’s share of usable rows.' : ''}
           {data.logical_type === 'datetime' ? ' Empty periods are included so gaps are visible.' : ''}
           {data.logical_type === 'categorical' && data.other_count ? ' Remaining categories are grouped as Other.' : ''}
         </p>
@@ -166,17 +187,19 @@ export default function Visualizations({ datasetId, profileState, profileRetry, 
       <ChartPanel eyebrow="COMPLETENESS" title="Where values are missing" note="Share of rows missing each field, ranked by impact. Up to 12 fields are shown; fields without missing values are omitted.">
         {profileState.loading || (!profile && !profileState.error) ? <p className="chart-loading">Loading column counts…</p> : profileState.error ? <div className="chart-error">{profileState.error} <button className="text-button" onClick={profileRetry}>Try again</button></div> : missing.length ? <>
           <p className="chart-insight"><strong>{missing[0].name}</strong> is missing in <strong>{formatNumber(missingPercentages[0], 1)}%</strong> of rows ({formatNumber(missingCounts[0], 0)} records).</p>
-          <PlotChart data={[{ type: 'bar', orientation: 'h', x: missingPercentages, y: missingLabels.map((label) => label.length > 27 ? `${label.slice(0, 24)}…` : label), customdata: missingCounts,
-            marker: { color: BLUE }, hovertemplate: '%{y}<br>%{x:.2f}% missing · %{customdata:,} rows<extra></extra>' }]}
+          <p className="chart-key"><span><i className="key-swatch key-high" />20%+ missing</span><span><i className="key-swatch key-medium" />5–20%</span><span><i className="key-swatch key-low" />Under 5%</span></p>
+          <PlotChart data={[{ type: 'bar', orientation: 'h', width: 0.54, x: missingPercentages, y: missingLabels.map((label) => label.length > 27 ? `${label.slice(0, 24)}…` : label), customdata: missingCounts,
+            marker: { color: missingPercentages.map((value) => value >= 20 ? '#d77e75' : value >= 5 ? '#d5a45e' : '#55aa9a') }, hovertemplate: '%{y}<br>%{x:.2f}% missing · %{customdata:,} rows<extra></extra>' }]}
             layout={{ ...BAR_LAYOUT, xaxis: { title: { text: 'Rows missing this field (%)' }, range: [0, Math.min(100, Math.max(...missingPercentages) + 12)], gridcolor: '#edf2f0', zeroline: false } }}
-            label="Percentage of rows missing each field" height={Math.max(250, missing.length * 37 + 80)} />
+            label="Percentage of rows missing each field" height={Math.max(220, missing.length * 32 + 75)} />
           <MissingValuesTable columns={missing} rowsCount={profile.rows_count} />
         </> : <p className="chart-empty">No missing values were reported.</p>}
       </ChartPanel>
     {profile && <Distribution key={datasetId} datasetId={datasetId} columns={profile.columns} />}
     <ChartPanel eyebrow="ANOMALY SIGNALS" title="What flagged the rows" note="Shows up to 12 leading checks that actually flagged rows. Counts overlap; the distinct flagged-row total below counts each row once.">
       {anomalyState.loading || (!anomalies && !anomalyState.error) ? <p className="chart-loading">Counting anomaly signals…</p> : anomalyState.error ? <div className="chart-error">{anomalyState.error} <button className="text-button" onClick={anomalyRetry}>Try again</button></div> : signals.length ? <>
-        <PlotChart data={horizontalBars(signalLabels, signalCounts, '#d39468')} layout={BAR_LAYOUT} label="Rows flagged by each anomaly signal" height={Math.max(280, signals.length * 33 + 70)} />
+        <p className="chart-key"><span><i className="key-swatch key-iqr" />IQR</span><span><i className="key-swatch key-zscore" />Z-score</span><span><i className="key-swatch key-forest" />Isolation Forest</span></p>
+        <PlotChart data={horizontalBars(signalLabels, signalCounts, signalLabels.map(signalColor))} layout={BAR_LAYOUT} label="Rows flagged by each anomaly signal" height={Math.max(230, signals.length * 31 + 70)} />
         <p className="chart-caption">{formatNumber(anomalies.anomaly_rows_count, 0)} distinct flagged rows of {formatNumber(anomalies.rows_count, 0)}. Flags invite review; they are not proof of data-quality errors.</p>
         <ChartValues labels={signalLabels} counts={signalCounts} />
       </> : <p className="chart-empty">No anomaly method flagged a row, or no method could be evaluated.</p>}

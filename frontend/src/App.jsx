@@ -107,7 +107,7 @@ function Sidebar({ datasets, selectedId, onSelect, onReorder, loading, error, re
       <div className="sidebar-heading"><span>Datasets</span><span className="count-pill">{datasets.length}</span></div>
       {(datasets.length > 1 || search) && <label className="search-wrap">
         <span className="sr-only">Search datasets</span>
-        <span aria-hidden="true">⌕</span>
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none"><circle cx="10.75" cy="10.75" r="6.25" stroke="currentColor" strokeWidth="1.8" /><path d="m15.5 15.5 4.25 4.25" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>
         <input type="search" placeholder="Search datasets" value={search} onChange={(event) => setSearch(event.target.value)} />
       </label>}
 
@@ -217,7 +217,7 @@ function Overview({ dataset, qualityState, onNavigate, onRetryQuality, onReport,
         <section className="panel">
           <div className="panel-head"><div><span className="eyebrow">WHAT TO REVIEW</span><h3>Leading findings</h3></div><span className="subtle-count">{issues.length} total</span></div>
           {qualityState.loading ? <LoadingBlock label="Finding issues…" /> : issues.length ? (
-            <div className="finding-list">{issues.slice(0, 3).map((issue, index) => <div className="finding" key={`${issue.dimension}-${index}`}><span className={`severity-dot ${issue.severity}`} /><div><strong>{dimensionLabel(issue.dimension)} · {titleCase(issue.severity)}</strong><p>{issue.message}</p></div></div>)}</div>
+            <div className="finding-list">{issues.slice(0, 3).map((issue, index) => <div className={`finding finding-${issue.severity}`} key={`${issue.dimension}-${index}`}><span className={`severity-dot ${issue.severity}`} aria-hidden="true" /><div><strong>{dimensionLabel(issue.dimension)} · {titleCase(issue.severity)}</strong><p>{issue.message}</p></div></div>)}</div>
           ) : qualityState.error ? <p className="muted">Quality findings are unavailable for this dataset.</p> : <EmptyBlock title="No issues reported">Available quality checks did not report issues.</EmptyBlock>}
         </section>
       </div>

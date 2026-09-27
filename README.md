@@ -101,6 +101,8 @@ The local library shows one entry per distinct stored CSV and skips old records 
 
 **Reading the results:** Overview previews the dataset and its leading quality findings; Profile describes columns, missing cells, and duplicate rows; Quality shows the weighted score and the evidence behind each finding; Anomalies lists unusual numeric rows for investigation; Visualizations charts the same underlying counts and one chosen field. The anomaly queue is ordered by review priority, not source row number. Use **Source row → Explain** to inspect any one-based data row; its result appears beside the lookup. Numeric anomaly flags are not proof of data errors, and missing fields are covered in Profile and Quality. The PDF collects the main findings for sharing.
 
+**Using the charts:** Missing-field bars show the percentage of rows affected, with color bands and exact counts on hover or in the table. The field explorer shows a histogram, timeline, or value bars depending on the selected column; fields with a few distinct values also offer a **Share** view for proportions. The anomaly chart groups nonzero flags by IQR, Z-score, and Isolation Forest. Its method counts can overlap, so use the distinct-row total below the chart for the number of records to review.
+
 **How to read the score:** Completeness weighs both overall filled-cell coverage and the least-complete column, with an extra deduction capped at 15 completeness points. The overall score then blends the weighted average of evaluated dimensions equally with the lowest evaluated dimension. This prevents strong checks from hiding a weak area. The full local retail file scores **87.56** and the 5,000-row local sample **89.57**; their weighted averages alone would be 91.55 and 94.81. Quality and the PDF show the calculation and affected columns. The score still cannot know which fields are essential to a particular task. Retail validity and consistency are **Not evaluated** for unrelated data such as Titanic and excluded from its score. Statistical anomaly flags do not lower quality scores by themselves; suggested next steps come from explicit rules, not a language model.
 
 **Another large retail test:** [dunnhumby — The Complete Journey on Kaggle](https://www.kaggle.com/datasets/frtgnn/dunnhumby-the-complete-journey). Download and unzip it, then upload **`transaction_data.csv`** locally. It has 2,595,732 transaction rows and 12 columns. An isolated local test completed upload processing, profiling, scoring, numeric chart data, anomaly detection, and PDF generation. The file has no missing cells or duplicate rows, so it scored 100 on the **two generic checks**; the dashboard now states that only 2 of 4 checks ran. Its 413,810 statistical anomaly candidates are investigation leads, not confirmed errors. The raw dataset is not included in Git.
@@ -223,7 +225,7 @@ The dashboard calls the FastAPI endpoints. It keeps anomaly flags separate from 
 
 Implemented:
 
-- Interactive Plotly charts for evaluated quality dimensions, missing values, and anomaly signals
+- Interactive Plotly charts for missing values, field distributions, and anomaly signals
 - A field explorer for numeric distributions, leading categories, and date activity
 - Numeric full-range and typical-range views, with the excluded tail count stated clearly
 - Hover, zoom, and reset controls, plus a count table alongside each chart
