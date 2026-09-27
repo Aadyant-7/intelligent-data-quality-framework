@@ -252,9 +252,12 @@ def _assess_retail_validity(
             "message": "Zero-priced records were found and require business-context review.",
         })
 
+    complete_input_rows = int((np.isfinite(quantity) & np.isfinite(unit_price)).sum())
     return {
         "score": score,
         "invalid_rows": invalid_count,
+        "complete_input_rows": complete_input_rows,
+        "coverage_percentage": round(100 * complete_input_rows / len(dataframe), 2),
         "matched_columns": {role: fields[role] for role in ("quantity", "unit_price")},
         "cancellation_rule_evaluated": has_cancellation_marker,
         "reason": (
@@ -300,7 +303,9 @@ def _assess_retail_consistency(
             mismatch = comparable & ((total - expected).abs() > tolerance)
             affected = int(mismatch.sum())
             checks.append({"rule": "line_total", "score": round(100 * (1 - affected / checked), 2),
-                           "checked": checked, "affected": affected, "columns": [qty_name, price_name, total_name],
+                           "checked": checked, "affected": affected,
+                           "coverage_percentage": round(100 * checked / len(dataframe), 2),
+                           "columns": [qty_name, price_name, total_name],
                            "discounted_rows_excluded": "discount_applied" in fields,
                            "tax_amount_column": fields.get("tax_amount")})
             if affected:

@@ -218,11 +218,21 @@ def render_report_pdf(
             ) + ". Ambiguous names are excluded from retail rules.", styles["small"],
         ))
     consistency_checks = quality["dimensions"]["consistency"].get("checks", [])
+    validity = quality["dimensions"]["validity"]
+    if "complete_input_rows" in validity:
+        story.append(Paragraph(
+            f"Retail validity had complete quantity and price inputs for "
+            f"{_number(validity['complete_input_rows'])} rows "
+            f"({_number(validity['coverage_percentage'], 2)}% of the dataset). "
+            "Missing inputs are covered by completeness.", styles["small"],
+        ))
     if consistency_checks:
         story.append(Paragraph(
             "Retail consistency comparisons: " + "; ".join(
                 f"{_text(check['rule'].replace('_', ' '))}: {_number(check['checked'])} checked, "
                 f"{_number(check['affected'])} inconsistent"
+                + (f", {_number(check['coverage_percentage'], 2)}% of rows compared"
+                   if "coverage_percentage" in check else "")
                 for check in consistency_checks
             ) + ".", styles["small"],
         ))

@@ -17,6 +17,11 @@ DEMO_SOURCES = {
     "uploads/demo-supermarket-sales.csv": DATASET_DIRECTORY / "supermarket_sales_demo.csv",
 }
 DEMO_DATASET_PATHS = frozenset(DEMO_SOURCES)
+DEMO_NAMES = {
+    "uploads/demo-online-retail-sample.csv": "UK Online Retail (excerpt).csv",
+    "uploads/demo-retail-store-sales.csv": "Retail Store Sales (messy).csv",
+    "uploads/demo-supermarket-sales.csv": "Supermarket Sales (tax included).csv",
+}
 
 
 def seed_demo_datasets(db: Session) -> list[Dataset]:
@@ -31,7 +36,7 @@ def seed_demo_datasets(db: Session) -> list[Dataset]:
         if dataset is None:
             dataset = Dataset(file_path=storage_path)
             db.add(dataset)
-        dataset.file_name = source.name
+        dataset.file_name = DEMO_NAMES.get(storage_path, source.name)
         dataset.rows_count = len(dataframe)
         dataset.columns_count = len(dataframe.columns)
         datasets.append(dataset)

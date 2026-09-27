@@ -38,6 +38,8 @@ class RetailSchemaTests(unittest.TestCase):
         result = assess_dataset_quality(self.dataset)
         self.assertEqual(result["retail_schema"]["matches"]["unit_price"], "Price Per Unit")
         self.assertEqual(result["dimensions"]["validity"]["invalid_rows"], 1)
+        self.assertEqual(result["dimensions"]["validity"]["complete_input_rows"], 3)
+        self.assertEqual(result["dimensions"]["validity"]["coverage_percentage"], 100.0)
         self.assertFalse(result["dimensions"]["validity"]["cancellation_rule_evaluated"])
         consistency = result["dimensions"]["consistency"]
         self.assertEqual(consistency["checks"][0]["checked"], 3)
@@ -51,6 +53,7 @@ class RetailSchemaTests(unittest.TestCase):
         check = result["dimensions"]["consistency"]["checks"][0]
         self.assertEqual(check["checked"], 1)
         self.assertEqual(check["affected"], 0)
+        self.assertEqual(check["coverage_percentage"], 50.0)
         self.assertEqual(check["tax_amount_column"], "Tax 5%")
 
 
