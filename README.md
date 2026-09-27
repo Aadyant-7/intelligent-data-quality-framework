@@ -421,6 +421,8 @@ Retail rules now recognize documented header variants such as `UnitPrice`, `Unit
 
 The public demo bundles [three attributed retail examples](datasets/README.md): a 5,000-row UK Online Retail excerpt, the full 12,575-row dirty retail store file, and a 1,000-row supermarket QA example deliberately edited from a preserved clean source. They are labeled by what each demonstrates. The Quality view yields 89.57, 86.85, and 90.99 respectively under the configured checks; these scores describe only evaluated rules. The supermarket example visibly exercises missingness, exact duplicates, invalid prices, and tax-inclusive total mismatches. The dirty retail file has 3,778 safe line-total comparisons, about 30% of its rows. The interface uses deeper blue panels, off-white text on blue surfaces, a quieter logo, and small chart-bar gaps. Supported browsers animate dataset reordering unless reduced motion is requested. The browser-tab icon has its own favicon asset.
 
+On desktop, drag the slim handle beside the dataset sidebar to adjust its width; arrow keys work when the handle is focused, and a double-click resets it. The width is saved in that browser. Dataset names wrap instead of being clipped. The sidebar remains full-width on narrow screens.
+
 ---
 
 ## Project Goal

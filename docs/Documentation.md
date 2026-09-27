@@ -762,4 +762,8 @@ The original supermarket CSV is preserved as `datasets/supermarket_sales_source.
 
 The demo overview now calls each seeded entry a bundled example. Its Quality note says the consistency score reflects only the reported comparisons; the wording remains correct for both perfect and imperfect rule scores.
 
+### Adjustable dataset sidebar
+
+Desktop users can drag the narrow separator between the sidebar and main content, or focus it and use the left/right arrow keys, to set a width between 240 pixels and the smaller of 520 pixels or 42% of the window. Double-click restores the default width. The choice is saved in browser local storage. Dataset names wrap rather than silently truncating, and the mobile layout keeps its existing full-width sidebar with no resize handle. This is a frontend-only change shared by the local app and hosted demo; it does not change dataset storage or analysis.
+
 Deployment verification: GitHub commit `9ae19d7` built successfully on Vercel and was manually deployed to the Render Free API. Render reported the deployment live after its health check. The public API listed exactly the three bundled files and returned the scores and matched unit-price fields in the table above; an unknown dataset ID returned HTTP 404. The production Vercel page visibly listed all three files and showed the updated 89.57 score for the UK sample. Uploads remain unavailable in public demo mode.

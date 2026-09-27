@@ -13,6 +13,8 @@ const TABS = [
 ]
 const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true'
 const DATASET_ORDER_KEY = 'data-quality-dataset-order-v1'
+const SIDEBAR_WIDTH_KEY = 'data-quality-sidebar-width-v1'
+const SIDEBAR_MIN_WIDTH = 240
 const SEVERITY_ORDER = { high: 0, medium: 1, low: 2, info: 3 }
 const METHOD_DESCRIPTIONS = {
   iqr: 'Compares each numeric value with the usual middle range.',
@@ -44,6 +46,28 @@ function orderDatasets(items) {
   return [...items].sort((a, b) =>
     (positions.get(a.id) ?? Infinity) - (positions.get(b.id) ?? Infinity) || b.id - a.id
   )
+}
+
+function sidebarWidthLimit() {
+  return Math.max(SIDEBAR_MIN_WIDTH, Math.min(520, Math.floor(window.innerWidth * 0.42)))
+}
+
+function clampSidebarWidth(width) {
+  return Math.min(sidebarWidthLimit(), Math.max(SIDEBAR_MIN_WIDTH, width))
+}
+
+function savedSidebarWidth() {
+  try {
+    const width = Number(localStorage.getItem(SIDEBAR_WIDTH_KEY))
+    if (Number.isFinite(width) && width > 0) {
+      return window.innerWidth <= 760
+        ? Math.min(520, Math.max(SIDEBAR_MIN_WIDTH, width))
+        : clampSidebarWidth(width)
+    }
+  } catch {
+    // A private browsing session can block local storage.
+  }
+  return clampSidebarWidth(window.innerWidth <= 1180 ? 260 : 296)
 }
 
 function reportFileName(fileName) {
@@ -304,6 +328,8 @@ function Anomalies({ state, retry, onPage, explanation, explanationLoading, expl
 }
 
 export default function App() {
+  const [sidebarWidth, setSidebarWidth] = useState(savedSidebarWidth)
+  const sidebarResize = useRef(null)
   const [datasets, setDatasets] = useState([])
   const [orderReady, setOrderReady] = useState(false)
   const [selectedId, setSelectedId] = useState(null)
@@ -341,6 +367,31 @@ export default function App() {
   const anomalyCache = useRef(new Map())
   const visualAnomalyCache = useRef(new Map())
   const explanationController = useRef(null)
+
+  useEffect(() => {
+    const onResize = () => {
+      if (window.innerWidth > 760) setSidebarWidth((width) => clampSidebarWidth(width))
+    }
+    window.addEventListener('resize', onResize)
+    return () => {
+      window.removeEventListener('resize', onResize)
+      document.body.classList.remove('resizing-sidebar')
+    }
+  }, [])
+
+  useEffect(() => {
+    try { localStorage.setItem(SIDEBAR_WIDTH_KEY, String(sidebarWidth)) } catch {
+      // Resizing still works when browser storage is unavailable.
+    }
+  }, [sidebarWidth])
+
+  function endSidebarResize(event) {
+    sidebarResize.current = null
+    document.body.classList.remove('resizing-sidebar')
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    }
+  }
 
   useEffect(() => {
     let active = true
@@ -571,8 +622,28 @@ export default function App() {
     explainRow(value)
   }
 
-  return <div className="app-shell">
+  return <div className="app-shell" style={{ '--sidebar-width': `${sidebarWidth}px` }}>
     <Sidebar datasets={datasets} selectedId={selectedId} onSelect={chooseDataset} onReorder={reorderDataset} loading={listLoading} error={listError} reload={() => setListReload((value) => value + 1)} file={file} setFile={setFile} uploading={uploading} uploadError={uploadError} onUpload={handleUpload} search={search} setSearch={setSearch} confirmClear={confirmClear} setConfirmClear={setConfirmClear} clearing={clearing} clearError={clearError} onClear={handleClearHistory} removeId={removeId} setRemoveId={(id) => { setRemoveId(id); setRemoveError('') }} removingId={removingId} removeError={removeError} onRemove={handleRemoveDataset} />
+    <div className="sidebar-resizer" role="separator" aria-label="Resize dataset sidebar" aria-orientation="vertical" aria-valuemin={SIDEBAR_MIN_WIDTH} aria-valuemax={sidebarWidthLimit()} aria-valuenow={sidebarWidth} tabIndex={0} title="Drag to resize. Double-click to reset."
+      onPointerDown={(event) => {
+        if (event.button !== 0) return
+        sidebarResize.current = { x: event.clientX, width: sidebarWidth }
+        event.currentTarget.setPointerCapture(event.pointerId)
+        document.body.classList.add('resizing-sidebar')
+        event.preventDefault()
+      }}
+      onPointerMove={(event) => {
+        if (!sidebarResize.current) return
+        setSidebarWidth(clampSidebarWidth(sidebarResize.current.width + event.clientX - sidebarResize.current.x))
+      }}
+      onPointerUp={endSidebarResize}
+      onPointerCancel={endSidebarResize}
+      onDoubleClick={() => setSidebarWidth(clampSidebarWidth(window.innerWidth <= 1180 ? 260 : 296))}
+      onKeyDown={(event) => {
+        if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
+        event.preventDefault()
+        setSidebarWidth((width) => clampSidebarWidth(width + (event.key === 'ArrowRight' ? 20 : -20)))
+      }}><span aria-hidden="true" /></div>
     <main className="main-content">
       <header className="topbar"><div><span className="eyebrow">INTELLIGENT DATA QUALITY FRAMEWORK</span><h1>Dataset review</h1></div></header>
       {notice && <div className="success-notice" role="status">✓ {notice}<button onClick={() => setNotice('')} aria-label="Dismiss notification">×</button></div>}

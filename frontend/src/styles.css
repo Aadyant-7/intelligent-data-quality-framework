@@ -21,7 +21,12 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
 .app-shell { display: flex; min-height: 100vh; }
-.sidebar { width: 296px; flex: 0 0 296px; min-height: 100vh; background: linear-gradient(164deg, #17263b 0%, #1c304b 50%, #203955 100%); color: #f1f5fb; display: flex; flex-direction: column; padding: 28px 18px 20px; position: sticky; top: 0; height: 100vh; overflow-y: auto; box-shadow: 8px 0 30px rgba(28, 42, 72, .07); }
+.sidebar { width: var(--sidebar-width, 296px); flex: 0 0 var(--sidebar-width, 296px); min-height: 100vh; background: linear-gradient(164deg, #17263b 0%, #1c304b 50%, #203955 100%); color: #f1f5fb; display: flex; flex-direction: column; padding: 28px 18px 20px; position: sticky; top: 0; height: 100vh; overflow-y: auto; box-shadow: 8px 0 30px rgba(28, 42, 72, .07); }
+.sidebar-resizer { flex: 0 0 9px; position: sticky; top: 0; height: 100vh; background: #dbe5f0; cursor: col-resize; touch-action: none; display: grid; place-items: center; z-index: 2; }
+.sidebar-resizer span { width: 3px; height: 38px; border-radius: 3px; background: #8aa3c0; transition: background .15s, height .15s; }
+.sidebar-resizer:hover span, .sidebar-resizer:focus-visible span, .resizing-sidebar .sidebar-resizer span { height: 55px; background: #356ca9; }
+.sidebar-resizer:focus-visible { outline: 3px solid #79a9f0; outline-offset: -3px; }
+.resizing-sidebar { user-select: none; cursor: col-resize; }
 .sidebar, .dataset-list { scrollbar-color: #6382a7 #19314e; scrollbar-width: thin; }
 .sidebar::-webkit-scrollbar-track, .dataset-list::-webkit-scrollbar-track { background: #19314e; border-radius: 9px; }
 .sidebar::-webkit-scrollbar-thumb, .dataset-list::-webkit-scrollbar-thumb { background: #6382a7; border-radius: 9px; }
@@ -59,8 +64,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .dataset-item.selected { color: white; }
 .dataset-icon { width: 30px; height: 30px; flex: 0 0 30px; border-radius: 8px; display: grid; place-items: center; background: #365071; color: #a5d2ff; font-size: 15px; }
 .dataset-item.selected .dataset-icon { background: #5b87b2; color: #f3f8ff; }
-.dataset-text { overflow: hidden; }
-.dataset-text strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 650; }
+.dataset-text { min-width: 0; overflow-wrap: anywhere; }
+.dataset-text strong { display: block; font-size: 12px; line-height: 1.35; font-weight: 650; }
 .dataset-text small { display: block; margin-top: 3px; color: #a9bdd1; font-size: 11px; }
 .sidebar-message { color: #c2d1e1; font-size: 12px; line-height: 1.5; padding: 12px; }
 .sidebar-error { color: #ffb4a9; }
@@ -298,7 +303,6 @@ details summary { color: #198774; cursor: pointer; font-size: 11px; font-weight:
 .chart-error { color: #a05743; }
 
 @media (max-width: 1180px) {
-  .sidebar { width: 260px; flex-basis: 260px; }
   .stats-grid, .quality-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .stats-grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .overview-grid { grid-template-columns: 1fr; }
@@ -307,6 +311,7 @@ details summary { color: #198774; cursor: pointer; font-size: 11px; font-weight:
 @media (max-width: 760px) {
   .app-shell { display: block; }
   .sidebar { width: 100%; height: auto; min-height: 0; position: static; padding: 16px; }
+  .sidebar-resizer { display: none; }
   .brand { padding: 0 0 15px; }
   .sidebar-footer { display: none; }
   .sidebar-heading { margin: 5px 0 10px; }
