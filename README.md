@@ -255,6 +255,8 @@ The repository now has a free-hosting setup for a **read-only public sample**. I
 
 **Live deployment:** [React dashboard](https://intelligent-data-quality-framework.vercel.app) · [FastAPI service](https://intelligent-data-quality-api.onrender.com) · Neon Free metadata database. The free backend filesystem is temporary, so the hosted demo does not accept user uploads. Render can take around a minute to wake after inactivity; the tracked sample is restored when the service starts.
 
+The hosted API still uses an earlier scoring revision: on 2026-09-27 it reported **98.61** for the sample, while the current local code reports **89.57**. The frontend visual update is live, but the hosted backend needs a separate deployment to show the newer scoring policy.
+
 At its original Phase 11 verification, before the completeness formula changed, the live deployment showed its 5,000-row sample with a 98.61 quality score, 877 anomaly-flagged rows, working charts and row explanations, and a downloadable PDF. Unknown dataset IDs returned 404; demo write routes returned 403. Only the Vercel production origin passed the API's configured CORS preflight. The GitHub Actions check for the deployment setup passed. These results describe that historical verification, not the revised local score or every possible dataset.
 
 ### Phase 12 — Final Documentation & Polish ✅
