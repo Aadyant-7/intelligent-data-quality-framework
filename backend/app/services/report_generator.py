@@ -137,7 +137,7 @@ def render_report_pdf(
     document = SimpleDocTemplate(
         buffer, pagesize=A4, leftMargin=48, rightMargin=48,
         topMargin=70, bottomMargin=58,
-        title=f"Data quality report - dataset {dataset.id}",
+        title=f"Data Quality Report - {dataset.file_name}",
         author="Intelligent Data Quality Framework",
     )
     story: list[Any] = []

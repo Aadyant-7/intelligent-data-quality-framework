@@ -1,4 +1,6 @@
 from contextlib import asynccontextmanager
+import re
+from urllib.parse import quote
 
 from fastapi import Depends, FastAPI, File, HTTPException, Query, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -66,6 +68,14 @@ def _get_dataset(db: Session, dataset_id: int) -> Dataset:
     if dataset is None or (DEMO_MODE and dataset.file_path != DEMO_DATASET_PATH):
         raise HTTPException(status_code=404, detail="Dataset not found.")
     return dataset
+
+
+def _report_download_name(file_name: str) -> str:
+    """Build a safe, readable PDF name from the uploaded dataset name."""
+    source_name = file_name.replace("\\", "/").rsplit("/", 1)[-1]
+    stem = re.sub(r"\.(csv|xlsx)$", "", source_name, flags=re.IGNORECASE)
+    stem = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", stem).strip(" .")[:100]
+    return f"Data Quality Report - {stem or 'Dataset'}.pdf"
 
 
 def _require_writable_workspace() -> None:
@@ -142,11 +152,15 @@ def get_dataset_quality(dataset_id: int, db: Session = Depends(get_db)):
 @app.get("/datasets/{dataset_id}/report")
 def get_dataset_report(dataset_id: int, db: Session = Depends(get_db)):
     dataset = _get_dataset(db, dataset_id)
+    download_name = _report_download_name(dataset.file_name)
 
     return Response(
         content=generate_dataset_report(dataset),
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="dataset-{dataset_id}-quality-report.pdf"'},
+        headers={"Content-Disposition": (
+            f'attachment; filename="{download_name if download_name.isascii() else "Data Quality Report.pdf"}"; '
+            f"filename*=UTF-8''{quote(download_name)}"
+        )},
     )
 
 

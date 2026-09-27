@@ -8,6 +8,7 @@ from unittest.mock import patch
 import pandas as pd
 from fastapi import HTTPException
 
+from app.main import _report_download_name, get_dataset_report
 from app.models import Dataset
 from app.services import dataset_storage
 from app.services.report_generator import generate_dataset_report
@@ -56,6 +57,23 @@ class ReportGeneratorTests(unittest.TestCase):
         with self.assertRaises(HTTPException) as traversal:
             generate_dataset_report(self.dataset)
         self.assertEqual(traversal.exception.status_code, 400)
+
+    def test_download_name_uses_dataset_name_and_handles_unsafe_characters(self):
+        self.assertEqual(
+            _report_download_name("Online Retail.xlsx"),
+            "Data Quality Report - Online Retail.pdf",
+        )
+        self.assertEqual(
+            _report_download_name("folder\\Q3: Sales?.csv"),
+            "Data Quality Report - Q3_ Sales_.pdf",
+        )
+
+        self.dataset.file_name = "Retail café.csv"
+        with patch("app.main._get_dataset", return_value=self.dataset), \
+             patch("app.main.generate_dataset_report", return_value=b"%PDF-test"):
+            response = get_dataset_report(42, db=None)
+        self.assertIn("filename*=UTF-8''Data%20Quality%20Report%20-%20Retail%20caf%C3%A9.pdf",
+                      response.headers["content-disposition"])
 
 
 if __name__ == "__main__":

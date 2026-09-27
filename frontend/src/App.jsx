@@ -11,6 +11,7 @@ const TABS = [
   { id: 'visualizations', label: 'Visualizations' },
 ]
 const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true'
+const DATASET_ORDER_KEY = 'data-quality-dataset-order-v1'
 const SEVERITY_ORDER = { high: 0, medium: 1, low: 2, info: 3 }
 const METHOD_DESCRIPTIONS = {
   iqr: 'Compares each numeric value with the usual middle range.',
@@ -26,6 +27,28 @@ function priorityIssues(issues) {
   return [...issues].sort((a, b) =>
     (SEVERITY_ORDER[a.severity] ?? 4) - (SEVERITY_ORDER[b.severity] ?? 4)
       || (b.affected_records ?? 0) - (a.affected_records ?? 0))
+}
+
+function savedDatasetOrder() {
+  try {
+    const ids = JSON.parse(localStorage.getItem(DATASET_ORDER_KEY) || '[]')
+    return Array.isArray(ids) ? ids.filter(Number.isInteger) : []
+  } catch {
+    return []
+  }
+}
+
+function orderDatasets(items) {
+  const positions = new Map(savedDatasetOrder().map((id, index) => [id, index]))
+  return [...items].sort((a, b) =>
+    (positions.get(a.id) ?? Infinity) - (positions.get(b.id) ?? Infinity) || b.id - a.id
+  )
+}
+
+function reportFileName(fileName) {
+  const sourceName = fileName.split(/[\\/]/).pop() || ''
+  const stem = sourceName.replace(/\.(csv|xlsx)$/i, '').replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').replace(/^[ .]+|[ .]+$/g, '').slice(0, 100)
+  return `Data Quality Report - ${stem || 'Dataset'}.pdf`
 }
 
 function LoadingBlock({ label = 'Loading data…' }) {
@@ -55,10 +78,28 @@ function StatCard({ label, value, detail, tone = '' }) {
   )
 }
 
-function Sidebar({ datasets, selectedId, onSelect, loading, error, reload, file, setFile, uploading, uploadError, onUpload, search, setSearch, confirmClear, setConfirmClear, clearing, clearError, onClear, removeId, setRemoveId, removingId, removeError, onRemove }) {
+function Sidebar({ datasets, selectedId, onSelect, onReorder, loading, error, reload, file, setFile, uploading, uploadError, onUpload, search, setSearch, confirmClear, setConfirmClear, clearing, clearError, onClear, removeId, setRemoveId, removingId, removeError, onRemove }) {
+  const [draggingId, setDraggingId] = useState(null)
+  const [overId, setOverId] = useState(null)
+  const pointerDrag = useRef(null)
   const filtered = datasets.filter((dataset) =>
     dataset.file_name.toLowerCase().includes(search.toLowerCase())
   )
+
+  function dragTarget(event) {
+    const entry = document.elementFromPoint(event.clientX, event.clientY)?.closest('[data-dataset-id]')
+    return entry ? Number(entry.dataset.datasetId) : null
+  }
+
+  function finishPointerDrag(event) {
+    const drag = pointerDrag.current
+    if (!drag) return
+    const targetId = dragTarget(event)
+    if (drag.started && targetId !== null) onReorder(drag.id, targetId)
+    pointerDrag.current = null
+    setDraggingId(null)
+    setOverId(null)
+  }
 
   return (
     <aside className="sidebar">
@@ -70,13 +111,39 @@ function Sidebar({ datasets, selectedId, onSelect, loading, error, reload, file,
         <input type="search" placeholder="Search datasets" value={search} onChange={(event) => setSearch(event.target.value)} />
       </label>}
 
+      {datasets.length > 1 && <p className="sort-hint">{search ? 'Clear search to rearrange datasets.' : 'Drag the handle to rearrange. Arrow keys work too.'}</p>}
       <div className="dataset-list" aria-label="Datasets">
         {loading && <div className="sidebar-message">Loading datasets…</div>}
         {error && <div className="sidebar-message sidebar-error">{error}<button onClick={reload}>Retry</button></div>}
         {!loading && !error && filtered.length === 0 && <div className="sidebar-message">{datasets.length ? 'No matching datasets.' : 'No datasets yet. Upload one below.'}</div>}
         {filtered.map((dataset) => (
-          <div className="dataset-entry" key={dataset.id}>
+          <div className={`dataset-entry ${overId === dataset.id && draggingId !== dataset.id ? 'drop-target' : ''}`} key={dataset.id} data-dataset-id={dataset.id}>
             <div className="dataset-row">
+              {datasets.length > 1 && !search && <button className="dataset-drag" type="button"
+                aria-label={`Rearrange ${dataset.file_name}; drag or use arrow keys`}
+                title="Drag to rearrange, or use arrow keys"
+                onPointerDown={(event) => {
+                  if (event.button !== 0) return
+                  pointerDrag.current = { id: dataset.id, x: event.clientX, y: event.clientY, started: false }
+                  event.currentTarget.setPointerCapture(event.pointerId)
+                }}
+                onPointerMove={(event) => {
+                  const drag = pointerDrag.current
+                  if (!drag || drag.id !== dataset.id) return
+                  if (!drag.started && Math.hypot(event.clientX - drag.x, event.clientY - drag.y) < 5) return
+                  drag.started = true
+                  setDraggingId(dataset.id)
+                  setOverId(dragTarget(event))
+                }}
+                onPointerUp={finishPointerDrag}
+                onPointerCancel={() => { pointerDrag.current = null; setDraggingId(null); setOverId(null) }}
+                onKeyDown={(event) => {
+                  if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return
+                  event.preventDefault()
+                  const index = datasets.findIndex((item) => item.id === dataset.id)
+                  const neighbor = datasets[index + (event.key === 'ArrowUp' ? -1 : 1)]
+                  if (neighbor) onReorder(dataset.id, neighbor.id)
+                }}>⠿</button>}
               <button className={`dataset-item ${selectedId === dataset.id ? 'selected' : ''}`} onClick={() => onSelect(dataset.id)} aria-current={selectedId === dataset.id ? 'true' : undefined}>
                 <span className="dataset-icon">▦</span>
                 <span className="dataset-text"><strong title={dataset.file_name}>{dataset.file_name}</strong><small>{formatNumber(dataset.rows_count, 0)} rows</small></span>
@@ -234,6 +301,7 @@ function Anomalies({ state, retry, onPage, explanation, explanationLoading, expl
 
 export default function App() {
   const [datasets, setDatasets] = useState([])
+  const [orderReady, setOrderReady] = useState(false)
   const [selectedId, setSelectedId] = useState(null)
   const [activeTab, setActiveTab] = useState('overview')
   const [search, setSearch] = useState('')
@@ -276,12 +344,22 @@ export default function App() {
     setListError('')
     api.datasets().then((items) => {
       if (!active) return
-      const sorted = [...items].sort((a, b) => b.id - a.id)
+      const sorted = orderDatasets(items)
       setDatasets(sorted)
       setSelectedId((current) => sorted.some((item) => item.id === current) ? current : sorted[0]?.id ?? null)
+      setOrderReady(true)
     }).catch((error) => { if (active) setListError(error.message) }).finally(() => { if (active) setListLoading(false) })
     return () => { active = false }
   }, [listReload])
+
+  useEffect(() => {
+    if (!orderReady) return
+    try {
+      localStorage.setItem(DATASET_ORDER_KEY, JSON.stringify(datasets.map((item) => item.id)))
+    } catch {
+      // The list still works when browser storage is unavailable.
+    }
+  }, [datasets, orderReady])
 
   useEffect(() => {
     if (selectedId === null) return
@@ -358,6 +436,19 @@ export default function App() {
     setReportError('')
   }
 
+  function reorderDataset(sourceId, targetId) {
+    if (sourceId === targetId) return
+    setDatasets((current) => {
+      const sourceIndex = current.findIndex((item) => item.id === sourceId)
+      const targetIndex = current.findIndex((item) => item.id === targetId)
+      if (sourceIndex < 0 || targetIndex < 0) return current
+      const reordered = [...current]
+      const [moved] = reordered.splice(sourceIndex, 1)
+      reordered.splice(targetIndex, 0, moved)
+      return reordered
+    })
+  }
+
   async function handleClearHistory() {
     setClearing(true)
     setClearError('')
@@ -403,6 +494,7 @@ export default function App() {
   async function handleReport() {
     if (!selectedId || reporting) return
     const reportId = selectedId
+    const reportName = reportFileName(selectedDataset.file_name)
     setReporting(true)
     setReportError('')
     try {
@@ -410,7 +502,7 @@ export default function App() {
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = `dataset-${reportId}-quality-report.pdf`
+      link.download = reportName
       document.body.appendChild(link)
       link.click()
       link.remove()
@@ -432,7 +524,7 @@ export default function App() {
     try {
       const created = await api.upload(file)
       const alreadySaved = datasets.some((dataset) => dataset.id === created.id)
-      setDatasets((current) => [created, ...current.filter((item) => item.id !== created.id)])
+      setDatasets((current) => current.some((item) => item.id === created.id) ? current : [...current, created])
       chooseDataset(created.id)
       setFile(null)
       formElement.reset()
@@ -473,7 +565,7 @@ export default function App() {
   }
 
   return <div className="app-shell">
-    <Sidebar datasets={datasets} selectedId={selectedId} onSelect={chooseDataset} loading={listLoading} error={listError} reload={() => setListReload((value) => value + 1)} file={file} setFile={setFile} uploading={uploading} uploadError={uploadError} onUpload={handleUpload} search={search} setSearch={setSearch} confirmClear={confirmClear} setConfirmClear={setConfirmClear} clearing={clearing} clearError={clearError} onClear={handleClearHistory} removeId={removeId} setRemoveId={(id) => { setRemoveId(id); setRemoveError('') }} removingId={removingId} removeError={removeError} onRemove={handleRemoveDataset} />
+    <Sidebar datasets={datasets} selectedId={selectedId} onSelect={chooseDataset} onReorder={reorderDataset} loading={listLoading} error={listError} reload={() => setListReload((value) => value + 1)} file={file} setFile={setFile} uploading={uploading} uploadError={uploadError} onUpload={handleUpload} search={search} setSearch={setSearch} confirmClear={confirmClear} setConfirmClear={setConfirmClear} clearing={clearing} clearError={clearError} onClear={handleClearHistory} removeId={removeId} setRemoveId={(id) => { setRemoveId(id); setRemoveError('') }} removingId={removingId} removeError={removeError} onRemove={handleRemoveDataset} />
     <main className="main-content">
       <header className="topbar"><div><span className="eyebrow">INTELLIGENT DATA QUALITY FRAMEWORK</span><h1>Dataset review</h1></div></header>
       {notice && <div className="success-notice" role="status">✓ {notice}<button onClick={() => setNotice('')} aria-label="Dismiss notification">×</button></div>}

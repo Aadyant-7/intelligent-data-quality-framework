@@ -37,9 +37,14 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .search-wrap span { font-size: 23px; line-height: 1; }
 .search-wrap input { width: 100%; background: transparent; color: #e8f3f0; border: 0; outline: 0; padding: 11px 0; font-size: 12px; }
 .search-wrap input::placeholder { color: #77969d; }
+.sort-hint { color: #88abae; font-size: 10px; line-height: 1.35; margin: -5px 10px 10px; }
 .dataset-list { display: flex; flex-direction: column; gap: 5px; overflow-y: auto; min-height: 60px; max-height: 34vh; padding: 0 3px; }
 .dataset-entry { min-width: 0; }
+.dataset-entry.drop-target { outline: 1px dashed #82d5c7; outline-offset: 1px; border-radius: 10px; background: #1e3a46; }
 .dataset-row { display: flex; align-items: center; gap: 3px; }
+.dataset-drag { flex: 0 0 20px; padding: 5px 0; border: 0; border-radius: 6px; background: transparent; color: #8bafb0; cursor: grab; font-size: 19px; line-height: 1; touch-action: none; user-select: none; }
+.dataset-drag:hover, .dataset-drag:focus-visible { color: #a8e8d9; background: #254d55; }
+.dataset-drag:active { cursor: grabbing; }
 .dataset-item { display: flex; align-items: center; text-align: left; flex: 1; min-width: 0; gap: 10px; padding: 10px 11px; border: 1px solid transparent; border-radius: 10px; background: transparent; color: #b5cdce; }
 .dataset-remove { flex: 0 0 27px; height: 31px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: #a9c4c4; font-size: 20px; line-height: 1; }
 .dataset-remove:hover { color: #ffd0ca; background: #4b343d; }

@@ -95,7 +95,7 @@ This project aims to build an automated framework that can:
 
 The hosted workspace is read-only. Run the project locally to upload your own CSV or `.xlsx` file.
 
-The local library shows one entry per distinct stored CSV and skips old records whose upload file is missing or has an invalid storage path. Uploading the same file again reuses its saved entry. The remove button beside an entry deletes that dataset and identical saved copies after confirmation. **Clear history** removes all local dataset records and their stored upload files after confirmation. To use a removed dataset again, re-upload the original file. Neither control is available in the public demo.
+The local library shows one entry per distinct stored CSV and skips old records whose upload file is missing or has an invalid storage path. Uploading the same file again reuses its saved entry. Drag the handle beside a dataset to rearrange the list, or focus the handle and use the up/down arrow keys. The order is saved in this browser; new uploads go at the end. Clear search before rearranging. The remove button beside an entry deletes that dataset and identical saved copies after confirmation. **Clear history** removes all local dataset records and their stored upload files after confirmation. To use a removed dataset again, re-upload the original file. Neither control is available in the public demo.
 
 **Open either version:** [Public sample demo](https://intelligent-data-quality-framework.vercel.app/) · [Local dashboard with uploads](http://127.0.0.1:5173/) (requires the local backend and frontend to be running).
 
@@ -239,7 +239,7 @@ Implemented:
 - Distinct anomaly-row counts, method evidence, five review examples, and retail cancellation context when available
 - Clear limits for large reports: up to 40 columns, 50 findings, and 30 method/field rows, with truncation stated in the PDF
 
-The report recalculates results from the stored normalized CSV when requested. It does not save analysis in PostgreSQL or treat unusual records as proven errors. PDF generation runs during the request, so large datasets can take several seconds.
+The report recalculates results from the stored normalized CSV when requested. The download is named `Data Quality Report - dataset_name.pdf` using the uploaded filename without its CSV or `.xlsx` extension. It does not save analysis in PostgreSQL or treat unusual records as proven errors. PDF generation runs during the request, so large datasets can take several seconds.
 
 ### Phase 11 — Deployment ✅
 
