@@ -4,7 +4,7 @@ An educational data-quality tool that profiles structured datasets, scores the c
 
 The reference data is a real Online Retail dataset. General profiling, completeness, duplicate, and numeric anomaly checks work across structured datasets; retail rules run only when their required columns exist. An unusual transaction is a reason to investigate, not automatically an error.
 
-**Try the read-only public demo:** [Data Quality Studio](https://intelligent-data-quality-framework.vercel.app). It opens a 5,000-row Online Retail sample. [API health](https://intelligent-data-quality-api.onrender.com/health) may respond slowly after inactivity because the free service sleeps.
+**Try the read-only public demo:** [Data Quality Studio](https://intelligent-data-quality-framework.vercel.app). It offers three different retail examples: UK Online Retail, a deliberately messy retail store file, and supermarket sales. [API health](https://intelligent-data-quality-api.onrender.com/health) may respond slowly after inactivity because the free service sleeps.
 
 ---
 
@@ -89,7 +89,7 @@ This project aims to build an automated framework that can:
 ### Deployment
 
 - Vercel Hobby hosts the React frontend
-- Render Free hosts the sample-only FastAPI service from `render.yaml`
+- Render Free hosts the read-only example API from `render.yaml`
 - Neon Free stores the hosted sample's metadata in PostgreSQL
 - GitHub Actions checks backend tests and the demo frontend build
 
@@ -103,7 +103,7 @@ The local library shows one entry per distinct stored CSV and skips old records 
 
 **Using the charts:** Missing-field bars show the percentage of rows affected, with color bands and exact counts on hover or in the table. The field explorer shows a histogram, timeline, or value bars depending on the selected column; fields with a few distinct values also offer a **Share** view for proportions. The anomaly chart groups nonzero flags by IQR, Z-score, and Isolation Forest. Its method counts can overlap, so use the distinct-row total below the chart for the number of records to review.
 
-**Dashboard design:** The interface uses a custom data-quality mark in the sidebar and browser tab. Its large surfaces use a consistent blue palette; smaller accents distinguish sections, chart series, and severity, and each finding still names its severity in text. The local library places **Clear history** below the dataset list, away from individual remove buttons, and keeps its confirmation step. On narrow screens, section navigation forms two visible rows instead of hiding a tab off-screen.
+**Dashboard design:** The interface uses a custom data-quality mark in the sidebar and browser tab. Its large surfaces and sidebar controls use a consistent blue, off-white, and slate palette; smaller accents distinguish sections, chart series, and severity, and each finding still names its severity in text. The local library places **Clear history** below the dataset list, away from individual remove buttons, and keeps its confirmation step. On narrow screens, section navigation forms two visible rows instead of hiding a tab off-screen.
 
 **How to read the score:** Completeness weighs both overall filled-cell coverage and the least-complete column, with an extra deduction capped at 15 completeness points. The overall score then blends the weighted average of evaluated dimensions equally with the lowest evaluated dimension. This prevents strong checks from hiding a weak area. The full local retail file scores **87.56** and the 5,000-row local sample **89.57**; their weighted averages alone would be 91.55 and 94.81. Quality and the PDF show the calculation and affected columns. The score still cannot know which fields are essential to a particular task. Retail validity and consistency are **Not evaluated** for unrelated data such as Titanic and excluded from its score. Statistical anomaly flags do not lower quality scores by themselves; suggested next steps come from explicit rules, not a language model.
 
@@ -249,9 +249,9 @@ The report recalculates results from the stored normalized CSV when requested. T
 
 ### Phase 11 — Deployment ✅
 
-The repository now has a free-hosting setup for a **read-only public sample**. In hosted demo mode, startup restores the tracked 5,000-row retail sample, the API lists only that sample, and both upload and manual metadata creation are rejected. The website labels this mode and hides its upload form. Local development keeps the full CSV and `.xlsx` upload workflow.
+The repository has a free-hosting setup for **three read-only retail examples**. In hosted demo mode, startup restores the tracked examples, the API lists only those files, and both upload and manual metadata creation are rejected. The website labels this mode and hides its upload form. Local development keeps the full CSV and `.xlsx` upload workflow.
 
-`render.yaml` describes the free backend service, and `frontend/vercel.json` supports the Vite single-page frontend. Hosted secrets and the allowed frontend origin are configured in provider settings, not in Git. `/health` is a lightweight hosting check; `/ready` also checks the database on demand. A GitHub Actions workflow checks backend tests and a demo frontend build.
+`render.yaml` describes the free backend service, and `frontend/vercel.json` supports the Vite single-page frontend. Hosted secrets and the allowed frontend origin are configured in provider settings, not in Git. `/health` checks the three bundled example files; `/ready` also checks the database on demand. A GitHub Actions workflow checks backend tests and a demo frontend build.
 
 **Live deployment:** [React dashboard](https://intelligent-data-quality-framework.vercel.app) · [FastAPI service](https://intelligent-data-quality-api.onrender.com) · Neon Free metadata database. The free backend filesystem is temporary, so the hosted demo does not accept user uploads. Render can take around a minute to wake after inactivity; the tracked sample is restored when the service starts.
 
@@ -414,6 +414,12 @@ The dashboard shows dataset names and row counts without database IDs. IDs remai
 ### Large retail test and visual refinement (September 2026)
 
 An isolated local run processed dunnhumby's 2.6-million-row `transaction_data.csv` without adding it to the user's dataset library. It completed profile, quality, chart data, anomaly detection, and PDF generation; the raw test files were removed afterward. The dashboard now uses one shared hover and selection shape for each sidebar dataset. Visualizations focus on missing-field percentages, a chosen field's distribution, and nonzero anomaly signals. Binary and other small-set numeric fields use discrete bars; date views include empty periods and use a line when there are enough periods. The repeated quality-dimension chart was removed because Quality already presents those scores and their evidence.
+
+### Retail schema matching and three-example demo (September 2026)
+
+Retail rules now recognize documented header variants such as `UnitPrice`, `Unit price`, and `Price Per Unit`. Matching normalizes punctuation and capitalization, then uses whole-name aliases; ambiguous matches are excluded and shown in Quality. Validity checks numeric quantity and unit price plus negative prices. The UK sample's `C`-invoice cancellation convention applies only to its `InvoiceNo` field; an unrelated transaction ID is not assumed to mean the same thing. Consistency checks product-code/description pairs when present, and can compare line totals with quantity × unit price, adding a matched tax amount or excluding discounted rows when indicated. Missing values remain a completeness finding. These are explicit rules, not a model that understands every retail field. The dashboard and PDF show matched fields and comparison counts so a perfect rule score is not mistaken for complete validation.
+
+The public demo now bundles [three attributed retail examples](datasets/README.md): 5,000 UK Online Retail rows, 3,000 deliberately dirty retail store rows, and 1,000 supermarket rows with tax-inclusive totals. The same Quality view yields 89.57, 86.95, and 100 respectively under the currently configured checks; these scores describe only evaluated rules. The full 12,575-row retail store file supplied for local testing yields 86.85, with 3,778 safe line-total comparisons. The interface uses deeper blue panels, off-white text on blue surfaces, a quieter logo, and small chart-bar gaps. Supported browsers animate dataset reordering unless reduced motion is requested.
 
 ---
 

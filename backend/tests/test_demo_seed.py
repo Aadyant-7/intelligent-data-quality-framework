@@ -14,7 +14,7 @@ from app.services.data_profiler import profile_dataset
 
 
 class DemoSeedTests(unittest.TestCase):
-    def test_seed_recovers_sample_and_reuses_metadata(self):
+    def test_seed_recovers_all_samples_and_reuses_metadata(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             source = root / "sample.csv"
@@ -24,19 +24,20 @@ class DemoSeedTests(unittest.TestCase):
             self.addCleanup(engine.dispose)
             Base.metadata.create_all(engine)
 
-            with patch.object(demo_seed, "DEMO_SOURCE", source), \
+            sources = {f"uploads/demo-example-{index}.csv": source for index in range(3)}
+            with patch.object(demo_seed, "DEMO_SOURCES", sources), \
                  patch.object(demo_seed, "UPLOAD_DIRECTORY", uploads), \
                  patch.object(dataset_storage, "UPLOAD_DIRECTORY", uploads), \
                  Session(engine) as db:
-                first = demo_seed.seed_demo_dataset(db)
-                first_id = first.id
-                self.assertEqual(profile_dataset(first)["rows_count"], 2)
+                first = demo_seed.seed_demo_datasets(db)
+                first_ids = [dataset.id for dataset in first]
+                self.assertEqual([profile_dataset(dataset)["rows_count"] for dataset in first], [2] * 3)
 
-                (uploads / "demo-online-retail-sample.csv").unlink()
-                second = demo_seed.seed_demo_dataset(db)
-                self.assertEqual(second.id, first_id)
-                self.assertEqual(db.query(Dataset).count(), 1)
-                self.assertEqual(profile_dataset(second)["rows_count"], 2)
+                (uploads / "demo-example-1.csv").unlink()
+                second = demo_seed.seed_demo_datasets(db)
+                self.assertEqual([dataset.id for dataset in second], first_ids)
+                self.assertEqual(db.query(Dataset).count(), 3)
+                self.assertEqual([profile_dataset(dataset)["rows_count"] for dataset in second], [2] * 3)
 
 
 if __name__ == "__main__":

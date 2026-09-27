@@ -1,15 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Data Quality Studio">
-  <defs>
-    <linearGradient id="base" x1="0" y1="0" x2="1" y2="1">
-      <stop stop-color="#5554b9"/>
-      <stop offset="1" stop-color="#168f91"/>
-    </linearGradient>
-  </defs>
-  <rect width="64" height="64" rx="18" fill="url(#base)"/>
-  <rect x="13" y="27" width="8" height="23" rx="4" fill="#9ae8d8"/>
-  <rect x="25" y="18" width="8" height="32" rx="4" fill="#ffd279"/>
-  <rect x="37" y="31" width="8" height="19" rx="4" fill="#ff9b89"/>
-  <path d="M14 53h31" stroke="#fff" stroke-opacity=".68" stroke-width="2" stroke-linecap="round"/>
-  <circle cx="46" cy="17" r="9" fill="#fff"/>
-  <path d="m42 17 2.7 2.7 5.3-5.6" fill="none" stroke="#4054a6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect width="64" height="64" rx="16" fill="#244875"/>
+  <path d="M15 47V30m11 17V22m11 25V35" stroke="#f2f6fc" stroke-width="6" stroke-linecap="round"/>
+  <path d="m43 28 5 5 7-10" fill="none" stroke="#d9eaff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

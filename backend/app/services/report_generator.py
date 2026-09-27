@@ -25,11 +25,11 @@ MAX_COLUMNS = 40
 MAX_ISSUES = 50
 MAX_METHOD_ROWS = 30
 REPORT_EXAMPLES = 5
-NAVY = colors.HexColor("#173743")
-GREEN = colors.HexColor("#27846F")
-MUTED = colors.HexColor("#60777C")
-PALE = colors.HexColor("#F1F7F4")
-RULE = colors.HexColor("#D9E5E1")
+NAVY = colors.HexColor("#203B62")
+GREEN = colors.HexColor("#668FC4")
+MUTED = colors.HexColor("#61738A")
+PALE = colors.HexColor("#F0F5FC")
+RULE = colors.HexColor("#DCE6F2")
 
 
 def _register_fonts() -> None:
@@ -68,7 +68,7 @@ def _styles() -> dict[str, ParagraphStyle]:
         "small": make("ReportSmall", textColor=MUTED, fontSize=7.5, leading=11, spaceAfter=5),
         "cell": make("ReportCell", fontSize=7.3, leading=11),
         "cell_bold": make("ReportCellBold", fontName="ReportVera-Bold", fontSize=7.3, leading=11),
-        "card_label": make("ReportCardLabel", textColor=colors.HexColor("#C8E5D9"), fontSize=8, leading=12),
+        "card_label": make("ReportCardLabel", textColor=colors.HexColor("#DFEAF8"), fontSize=8, leading=12),
         "card_value": make("ReportCardValue", textColor=colors.white, fontName="ReportVera-Bold", fontSize=20, leading=25),
         "card_detail": make("ReportCardDetail", textColor=colors.white, fontSize=9, leading=13, alignment=TA_LEFT),
     }
@@ -209,6 +209,23 @@ def render_report_pdf(
         "The overall score uses only evaluated dimensions and renormalizes their weights. "
         "A dimension marked Not evaluated is not treated as perfect.", styles["small"],
     ))
+    schema = quality.get("retail_schema", {})
+    matches = schema.get("matches", {})
+    if matches:
+        story.append(Paragraph(
+            "Retail field matches: " + "; ".join(
+                f"{_text(role.replace('_', ' '))}: {_text(column)}" for role, column in matches.items()
+            ) + ". Ambiguous names are excluded from retail rules.", styles["small"],
+        ))
+    consistency_checks = quality["dimensions"]["consistency"].get("checks", [])
+    if consistency_checks:
+        story.append(Paragraph(
+            "Retail consistency comparisons: " + "; ".join(
+                f"{_text(check['rule'].replace('_', ' '))}: {_number(check['checked'])} checked, "
+                f"{_number(check['affected'])} inconsistent"
+                for check in consistency_checks
+            ) + ".", styles["small"],
+        ))
     completeness = quality["dimensions"]["completeness"]
     if completeness.get("worst_column"):
         story.append(Paragraph(

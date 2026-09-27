@@ -5,6 +5,8 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from app.services.retail_schema import resolve_retail_schema
+
 
 def explain_row(
     dataframe: pd.DataFrame,
@@ -50,9 +52,8 @@ def explain_row(
             "message": f"{column} is {direction} the {method_label} boundary.",
         })
 
-    interpretation = _business_interpretation(
-        dataframe, index, bool(signals), bool(flagged_by)
-    )
+    fields = resolve_retail_schema(dataframe.columns)["matches"]
+    interpretation = _business_interpretation(dataframe, index, bool(signals), bool(flagged_by), fields)
     status = "flagged" if signals else (
         "not_flagged" if flagged_by else "not_evaluated"
     )
@@ -73,11 +74,12 @@ def explain_row(
 
 
 def _business_interpretation(
-    dataframe: pd.DataFrame, index: int, flagged: bool, evaluated: bool
+    dataframe: pd.DataFrame, index: int, flagged: bool, evaluated: bool,
+    fields: dict[str, str],
 ) -> dict[str, str | bool]:
     invoice = str(dataframe.at[index, "InvoiceNo"]) if "InvoiceNo" in dataframe else None
-    quantity = _numeric_cell(dataframe, index, "Quantity")
-    price = _numeric_cell(dataframe, index, "UnitPrice")
+    quantity = _numeric_cell(dataframe, index, fields.get("quantity", ""))
+    price = _numeric_cell(dataframe, index, fields.get("unit_price", ""))
 
     if price is not None and price < 0:
         return {

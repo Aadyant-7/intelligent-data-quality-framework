@@ -8,6 +8,7 @@ from fastapi import HTTPException
 
 from app.models import Dataset
 from app.services.dataset_storage import resolve_dataset_path
+from app.services.retail_schema import resolve_retail_schema
 
 
 QUALITY_WEIGHTS = {
@@ -49,12 +50,14 @@ def assess_dataset_quality(dataset: Dataset) -> dict[str, Any]:
         }
 
     issues: list[dict[str, Any]] = []
+    retail_schema = resolve_retail_schema(dataframe.columns)
+    fields = retail_schema["matches"]
 
     dimensions = {
         "completeness": _assess_completeness(dataframe, issues),
         "uniqueness": _assess_uniqueness(dataframe, issues),
-        "validity": _assess_retail_validity(dataframe, issues),
-        "consistency": _assess_retail_consistency(dataframe, issues),
+        "validity": _assess_retail_validity(dataframe, issues, fields),
+        "consistency": _assess_retail_consistency(dataframe, issues, fields),
     }
 
     available_dimensions = {
@@ -96,6 +99,7 @@ def assess_dataset_quality(dataset: Dataset) -> dict[str, Any]:
         "dimensions": dimensions,
         "issues": issues,
         "weights": QUALITY_WEIGHTS,
+        "retail_schema": retail_schema,
     }
 
 
@@ -161,30 +165,39 @@ def _assess_uniqueness(
 
 
 def _assess_retail_validity(
-    dataframe: pd.DataFrame, issues: list[dict[str, Any]]
+    dataframe: pd.DataFrame, issues: list[dict[str, Any]], fields: dict[str, str]
 ) -> dict[str, Any]:
-    required_columns = {"InvoiceNo", "Quantity", "UnitPrice"}
-    if not required_columns.issubset(dataframe.columns):
-        missing = ", ".join(sorted(required_columns - set(dataframe.columns)))
+    if not {"quantity", "unit_price"}.issubset(fields):
+        missing = ", ".join(role for role in ("quantity", "unit_price") if role not in fields)
         return {
             "score": None,
             "status": "not_evaluated",
-            "reason": f"Retail validity requires InvoiceNo, Quantity, and UnitPrice. Missing: {missing}.",
+            "reason": f"Retail validity requires quantity and unit price fields. Missing: {missing}.",
         }
 
-    cancellation_mask = dataframe["InvoiceNo"].astype(str).str.startswith("C")
-    quantity = pd.to_numeric(dataframe["Quantity"], errors="coerce")
-    unit_price = pd.to_numeric(dataframe["UnitPrice"], errors="coerce")
-    if dataframe["Quantity"].isna().all() and dataframe["UnitPrice"].isna().all():
+    quantity_column, price_column = fields["quantity"], fields["unit_price"]
+    # A C-prefixed invoice denotes a cancellation in the UK reference data.
+    # A generic transaction ID cannot safely be assumed to have that convention.
+    has_cancellation_marker = fields.get("transaction_id") == "InvoiceNo"
+    cancellation_mask = (
+        dataframe["InvoiceNo"].astype(str).str.startswith("C")
+        if has_cancellation_marker else pd.Series(False, index=dataframe.index)
+    )
+    quantity = pd.to_numeric(dataframe[quantity_column], errors="coerce")
+    unit_price = pd.to_numeric(dataframe[price_column], errors="coerce")
+    if dataframe[quantity_column].isna().all() and dataframe[price_column].isna().all():
         return {
             "score": None,
             "status": "not_evaluated",
-            "reason": "Quantity and UnitPrice contain no values to validate.",
+            "reason": "Quantity and unit price contain no values to validate.",
         }
 
-    invalid_quantity_format = dataframe["Quantity"].notna() & ~np.isfinite(quantity)
-    invalid_price_format = dataframe["UnitPrice"].notna() & ~np.isfinite(unit_price)
-    negative_quantity_without_cancellation = (quantity < 0) & np.isfinite(quantity) & ~cancellation_mask
+    invalid_quantity_format = dataframe[quantity_column].notna() & ~np.isfinite(quantity)
+    invalid_price_format = dataframe[price_column].notna() & ~np.isfinite(unit_price)
+    negative_quantity_without_cancellation = (
+        (quantity < 0) & np.isfinite(quantity) & ~cancellation_mask
+        if has_cancellation_marker else pd.Series(False, index=dataframe.index)
+    )
     negative_price = (unit_price < 0) & np.isfinite(unit_price)
     invalid_rows = (
         negative_quantity_without_cancellation
@@ -200,7 +213,7 @@ def _assess_retail_validity(
         issues.append({
             "dimension": "validity",
             "severity": _severity_from_percentage(100 * negative_quantity_count / len(dataframe)),
-            "column": "Quantity",
+            "column": quantity_column,
             "affected_records": negative_quantity_count,
             "message": "Negative quantities without cancellation-style invoice numbers were detected.",
         })
@@ -210,14 +223,14 @@ def _assess_retail_validity(
         issues.append({
             "dimension": "validity",
             "severity": _severity_from_percentage(100 * negative_price_count / len(dataframe)),
-            "column": "UnitPrice",
+            "column": price_column,
             "affected_records": negative_price_count,
             "message": "Negative unit prices were detected.",
         })
 
     for column, mask in (
-        ("Quantity", invalid_quantity_format),
-        ("UnitPrice", invalid_price_format),
+        (quantity_column, invalid_quantity_format),
+        (price_column, invalid_price_format),
     ):
         malformed_count = int(mask.sum())
         if malformed_count:
@@ -234,54 +247,76 @@ def _assess_retail_validity(
         issues.append({
             "dimension": "validity",
             "severity": "info",
-            "column": "UnitPrice",
+            "column": price_column,
             "affected_records": zero_price_count,
             "message": "Zero-priced records were found and require business-context review.",
         })
 
-    return {"score": score, "invalid_rows": invalid_count}
+    return {
+        "score": score,
+        "invalid_rows": invalid_count,
+        "matched_columns": {role: fields[role] for role in ("quantity", "unit_price")},
+        "cancellation_rule_evaluated": has_cancellation_marker,
+        "reason": (
+            "Quantity and price formats and negative prices checked; the UK C-invoice cancellation rule also applies."
+            if has_cancellation_marker else
+            "Quantity and price formats and negative prices checked. Negative quantities require business context and are not automatically scored as errors."
+        ),
+    }
 
 
 def _assess_retail_consistency(
-    dataframe: pd.DataFrame, issues: list[dict[str, Any]]
+    dataframe: pd.DataFrame, issues: list[dict[str, Any]], fields: dict[str, str]
 ) -> dict[str, Any]:
-    required_columns = {"StockCode", "Description"}
-    if not required_columns.issubset(dataframe.columns):
-        missing = ", ".join(sorted(required_columns - set(dataframe.columns)))
-        return {
-            "score": None,
-            "status": "not_evaluated",
-            "reason": f"Retail consistency requires StockCode and Description. Missing: {missing}.",
-        }
+    checks: list[dict[str, Any]] = []
+    if {"product_id", "product_name"}.issubset(fields):
+        code, name = fields["product_id"], fields["product_name"]
+        descriptions = dataframe.dropna(subset=[code, name]).groupby(code)[name].nunique()
+        if len(descriptions):
+            inconsistent = int((descriptions > 1).sum())
+            checks.append({"rule": "product_description", "score": round(100 * (1 - inconsistent / len(descriptions)), 2),
+                           "checked": len(descriptions), "affected": inconsistent, "columns": [code, name]})
+            if inconsistent:
+                issues.append({"dimension": "consistency", "severity": _severity_from_percentage(100 * inconsistent / len(descriptions)),
+                               "affected_records": inconsistent, "message": f"{code} values associated with multiple {name} values were detected."})
 
-    description_counts = (
-        dataframe.dropna(subset=["StockCode", "Description"])
-        .groupby("StockCode")["Description"]
-        .nunique()
-    )
-    total_codes = len(description_counts)
-    if total_codes == 0:
-        return {
-            "score": None,
-            "status": "not_evaluated",
-            "reason": "No stock codes with descriptions were available to compare.",
-        }
-    inconsistent_codes = int((description_counts > 1).sum())
-    score = round(100 * (1 - inconsistent_codes / total_codes), 2)
+    if {"quantity", "unit_price", "line_total"}.issubset(fields):
+        qty_name, price_name, total_name = (fields[role] for role in ("quantity", "unit_price", "line_total"))
+        qty = pd.to_numeric(dataframe[qty_name], errors="coerce")
+        price = pd.to_numeric(dataframe[price_name], errors="coerce")
+        total = pd.to_numeric(dataframe[total_name], errors="coerce")
+        comparable = np.isfinite(qty) & np.isfinite(price) & np.isfinite(total)
+        if "discount_applied" in fields:
+            discount = dataframe[fields["discount_applied"]].astype(str).str.strip().str.lower()
+            comparable &= discount.isin(("false", "0", "no"))
+        tax = None
+        if "tax_amount" in fields:
+            tax = pd.to_numeric(dataframe[fields["tax_amount"]], errors="coerce")
+            comparable &= np.isfinite(tax)
+        checked = int(comparable.sum())
+        if checked:
+            tolerance = np.maximum(0.02, 0.001 * np.abs(total))
+            expected = qty * price + (tax if tax is not None else 0)
+            mismatch = comparable & ((total - expected).abs() > tolerance)
+            affected = int(mismatch.sum())
+            checks.append({"rule": "line_total", "score": round(100 * (1 - affected / checked), 2),
+                           "checked": checked, "affected": affected, "columns": [qty_name, price_name, total_name],
+                           "discounted_rows_excluded": "discount_applied" in fields,
+                           "tax_amount_column": fields.get("tax_amount")})
+            if affected:
+                issues.append({"dimension": "consistency", "severity": _severity_from_percentage(100 * affected / checked),
+                               "affected_records": affected, "column": total_name,
+                               "message": f"{affected} comparable {total_name} values differ from {qty_name} × {price_name}{' + tax' if tax is not None else ''}."})
 
-    if inconsistent_codes:
-        issues.append({
-            "dimension": "consistency",
-            "severity": _severity_from_percentage(100 * inconsistent_codes / total_codes),
-            "affected_records": inconsistent_codes,
-            "message": "Stock codes associated with multiple product descriptions were detected.",
-        })
-
-    return {
-        "score": score,
-        "inconsistent_stock_codes": inconsistent_codes,
-        "checked_stock_codes": total_codes,
-    }
+    if not checks:
+        return {"score": None, "status": "not_evaluated",
+                "reason": "Retail consistency requires comparable product ID/description pairs or quantity, unit price, and line total values."}
+    result = {"score": round(sum(check["score"] for check in checks) / len(checks), 2), "checks": checks,
+              "reason": "Average of the evaluated retail consistency rules; each rule lists its comparison count and matched columns."}
+    product_check = next((check for check in checks if check["rule"] == "product_description"), None)
+    if product_check:
+        result.update({"inconsistent_stock_codes": product_check["affected"], "checked_stock_codes": product_check["checked"]})
+    return result
 
 
 def _severity_from_percentage(percentage: float) -> str:

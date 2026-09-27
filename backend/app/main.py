@@ -21,7 +21,7 @@ from app.services.anomaly_engine import (
 from app.services.data_profiler import profile_dataset
 from app.services.dataset_catalog import clear_dataset_history, list_available_datasets, remove_dataset_group
 from app.services.dataset_ingestion import ingest_dataset
-from app.services.demo_seed import DEMO_DATASET_PATH, seed_demo_dataset
+from app.services.demo_seed import DEMO_DATASET_PATHS, seed_demo_datasets
 from app.services.dataset_storage import resolve_dataset_path
 from app.services.quality_engine import assess_dataset_quality
 from app.services.report_generator import generate_dataset_report
@@ -33,7 +33,7 @@ async def lifespan(_app: FastAPI):
     Base.metadata.create_all(bind=engine)
     if DEMO_MODE:
         with SessionLocal() as db:
-            seed_demo_dataset(db)
+            seed_demo_datasets(db)
     yield
 
 
@@ -65,7 +65,7 @@ app.add_middleware(
 
 def _get_dataset(db: Session, dataset_id: int) -> Dataset:
     dataset = db.get(Dataset, dataset_id)
-    if dataset is None or (DEMO_MODE and dataset.file_path != DEMO_DATASET_PATH):
+    if dataset is None or (DEMO_MODE and dataset.file_path not in DEMO_DATASET_PATHS):
         raise HTTPException(status_code=404, detail="Dataset not found.")
     return dataset
 
@@ -99,7 +99,7 @@ def home():
 
 @app.get("/health")
 def health():
-    if DEMO_MODE and not resolve_dataset_path(DEMO_DATASET_PATH).is_file():
+    if DEMO_MODE and not all(resolve_dataset_path(path).is_file() for path in DEMO_DATASET_PATHS):
         raise HTTPException(status_code=503, detail="Demo dataset is unavailable.")
     return {"status": "ok"}
 
@@ -200,7 +200,7 @@ def get_anomaly_explanation(
 def get_datasets(db: Session = Depends(get_db)):
     query = db.query(Dataset)
     if DEMO_MODE:
-        query = query.filter(Dataset.file_path == DEMO_DATASET_PATH)
+        query = query.filter(Dataset.file_path.in_(DEMO_DATASET_PATHS))
     return list_available_datasets(query.all())
 
 

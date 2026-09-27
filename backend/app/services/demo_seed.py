@@ -1,4 +1,4 @@
-"""Make the public reference sample available in read-only demo mode."""
+"""Restore the public retail examples on ephemeral demo hosts."""
 
 from pathlib import Path
 from shutil import copyfile
@@ -10,24 +10,32 @@ from app.models import Dataset
 from app.services.dataset_storage import UPLOAD_DIRECTORY
 
 
-DEMO_DATASET_PATH = "uploads/demo-online-retail-sample.csv"
-DEMO_SOURCE = Path(__file__).resolve().parents[3] / "datasets" / "online_retail_sample.csv"
+DATASET_DIRECTORY = Path(__file__).resolve().parents[3] / "datasets"
+DEMO_SOURCES = {
+    "uploads/demo-online-retail-sample.csv": DATASET_DIRECTORY / "online_retail_sample.csv",
+    "uploads/demo-retail-store-sales.csv": DATASET_DIRECTORY / "retail_store_sales_demo.csv",
+    "uploads/demo-supermarket-sales.csv": DATASET_DIRECTORY / "supermarket_sales_demo.csv",
+}
+DEMO_DATASET_PATHS = frozenset(DEMO_SOURCES)
 
 
-def seed_demo_dataset(db: Session) -> Dataset:
-    """Refresh the public sample and keep one matching metadata record."""
+def seed_demo_datasets(db: Session) -> list[Dataset]:
+    """Refresh public samples and reuse matching metadata records."""
     UPLOAD_DIRECTORY.mkdir(parents=True, exist_ok=True)
-    destination = UPLOAD_DIRECTORY / Path(DEMO_DATASET_PATH).name
-    copyfile(DEMO_SOURCE, destination)
-    dataframe = pd.read_csv(destination)
-
-    dataset = db.query(Dataset).filter(Dataset.file_path == DEMO_DATASET_PATH).first()
-    if dataset is None:
-        dataset = Dataset(file_path=DEMO_DATASET_PATH)
-        db.add(dataset)
-    dataset.file_name = DEMO_SOURCE.name
-    dataset.rows_count = len(dataframe)
-    dataset.columns_count = len(dataframe.columns)
+    datasets = []
+    for storage_path, source in DEMO_SOURCES.items():
+        destination = UPLOAD_DIRECTORY / Path(storage_path).name
+        copyfile(source, destination)
+        dataframe = pd.read_csv(destination)
+        dataset = db.query(Dataset).filter(Dataset.file_path == storage_path).first()
+        if dataset is None:
+            dataset = Dataset(file_path=storage_path)
+            db.add(dataset)
+        dataset.file_name = source.name
+        dataset.rows_count = len(dataframe)
+        dataset.columns_count = len(dataframe.columns)
+        datasets.append(dataset)
     db.commit()
-    db.refresh(dataset)
-    return dataset
+    for dataset in datasets:
+        db.refresh(dataset)
+    return datasets

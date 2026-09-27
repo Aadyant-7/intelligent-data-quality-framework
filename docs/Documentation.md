@@ -4,7 +4,7 @@
 
 The Intelligent Data Quality Assessment & Anomaly Detection Framework is an enterprise-style platform for examining structured datasets before they are trusted for reporting, analytics, or machine-learning work.
 
-Locally, a user can upload a dataset, profile it, measure data quality, investigate unusual observations, and download a report. The public website offers a read-only sample of that workflow.
+Locally, a user can upload a dataset, profile it, measure data quality, investigate unusual observations, and download a report. The public website offers three read-only retail examples of that workflow.
 
 The project is built around real public data rather than fabricated examples. Its primary reference dataset is the UCI Online Retail dataset.
 
@@ -30,7 +30,7 @@ The system can currently:
 - Explore quality, missingness, anomaly signals, and field distributions with interactive charts.
 - Download a PDF assessment of the current stored dataset.
 
-The public, read-only sample is live at [Data Quality Studio](https://intelligent-data-quality-framework.vercel.app). The full upload workflow remains available locally. The final interface review removed misleading and repeated controls and added recovery for failed quality requests.
+The public, read-only example workspace is live at [Data Quality Studio](https://intelligent-data-quality-framework.vercel.app). The full upload workflow remains available locally. The final interface review removed misleading and repeated controls and added recovery for failed quality requests.
 
 ---
 
@@ -728,3 +728,24 @@ The local `Clear history` action now sits in an aligned library row below the da
 Verification: the frontend production build and `git diff --check` passed. The local browser showed the redesigned Overview and Quality views, the two-row navigation at a 390-pixel viewport, and Titanic's Share chart switching from bars to a donut with 61.6%/38.4% labels. The browser viewport was reset afterward. The existing dynamically loaded Plotly bundle still produces Vite's large-chunk warning. After the push, Vercel displayed the new visual identity and the hosted sample loaded after the free backend woke. The hosted backend still reported its older 98.61 sample score rather than the current local 89.57 result; its scoring deployment remains separate from this visual update.
 
 The final palette adjustment replaced teal/green endpoints in the sidebar, selected dataset row, upload card, dataset banner, score banner, and page wash with coordinated blues. Small semantic status and chart colors remain. The local Overview and Quality screens were visually checked after the adjustment.
+
+The sidebar's search text, dataset labels, selected icon, upload picker, and upload button were subsequently changed from green-tinted colors to cool blue and off-white. This keeps controls legible against the dark blue background without changing upload or selection behavior.
+
+## 30. Retail Schema Matching and Public Example Expansion (2026-09-27)
+
+The old retail rules depended on the UK reference file's literal headers. A valid retail store file with `Price Per Unit`, `Quantity`, and `Total Spent` therefore lost its retail validity and consistency scores. The new `retail_schema.py` service normalizes case, punctuation, and camel case, then matches documented whole-name aliases to retail roles. It reports both matches and ambiguous candidates; two plausible price columns are not silently guessed. General profiling, missingness, duplicates, and numeric anomaly methods still operate on arbitrary CSV columns. The schema matcher is a deterministic rule set, not a language model or a universal semantic understanding of retail data.
+
+Retail validity now needs matched quantity and unit price fields. It checks malformed or non-finite numeric values and negative unit prices. Zero price remains a review item. The `C`-prefixed cancellation rule is limited to the original `InvoiceNo` convention. Other transaction IDs do not imply that convention, and negative quantities without it are not automatically scored as invalid; returns may be legitimate. Retail consistency evaluates whichever comparisons have evidence: product ID to product name, or line total against quantity × unit price. The latter includes a matched tax amount when supplied and excludes explicitly discounted rows when a discount flag is present. Rows with missing or nonnumeric inputs are excluded from the arithmetic comparison and remain visible under completeness or validity. If both consistency rules apply, their rule scores are averaged. Every check reports its columns, comparison count, and affected count.
+
+The public demo now seeds and permits only three bundled paths: the original 5,000-row UCI Online Retail sample, a 3,000-row slice of the user's publicly sourced dirty retail store file, and 1,000 supermarket transactions from a public repository. Dataset source and terms are recorded in `datasets/README.md`. Startup restores the files on Render's temporary filesystem and reuses their database records. Demo write routes remain blocked. The three datasets are distinct examples of UK cancellation/description checks, missing retail fields with alternative headers, and tax-inclusive line totals. The last example scoring 100 means its configured checks found no problems; it does not certify all 17 columns or business suitability.
+
+| Dataset | Rows | Overall rule score | Retail validity | Retail consistency | Comparison evidence |
+| --- | ---: | ---: | ---: | ---: | --- |
+| UK Online Retail sample | 5,000 | 89.57 | 99.96 | 99.62 | 1,587 product codes compared |
+| Dirty retail store demo | 3,000 | 86.95 | 100 | 100 | 953 non-discounted complete line totals compared |
+| Supermarket sales demo | 1,000 | 100 | 100 | 100 | 1,000 tax-inclusive line totals compared |
+| Full locally uploaded retail store file | 12,575 | 86.85 | 100 | 100 | 3,778 non-discounted complete line totals compared |
+
+The visual follow-up darkens the large blue panels, replaces green-tinted text and controls on those panels with off-white and cool blue, reduces the mark's visual weight, and gives continuous histogram bars a visible gap. Dataset reorder uses the browser View Transitions API when available and respects reduced motion. These display changes do not alter persisted datasets or the scoring formula.
+
+Verification during this work: Python compilation, 45 backend tests, and a production frontend build passed. Focused tests cover alternate and ambiguous column names, tax-inclusive totals, discount exclusion, and repeat demo seeding. An isolated quality run produced the scores and comparison counts above without changing the user's saved library. The old local backend process was restarted, then its real saved retail store dataset (ID 13) returned 86.85 overall, 100 validity, 100 consistency, `Price Per Unit` as the matched price field, and 3,778 line-total comparisons. An invalid dataset ID returned HTTP 404, and its PDF report returned HTTP 200 with `application/pdf`. The Plotly bundle remains dynamically loaded and still triggers Vite's large-chunk warning.

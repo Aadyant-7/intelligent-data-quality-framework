@@ -28,6 +28,7 @@ export default function PlotChart({ data, layout, label, height = 320 }) {
         margin: { l: 105, r: 22, t: 12, b: 55 },
         paper_bgcolor: 'rgba(0,0,0,0)',
         plot_bgcolor: 'rgba(0,0,0,0)',
+        bargap: 0.19,
         font: { family: 'Inter, Segoe UI, sans-serif', size: 11, color: '#58737a' },
         ...layout,
       }, {

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { api } from './api'
 import { displayValue, formatDate, formatNumber, titleCase } from './format'
 import Visualizations from './Visualizations'
@@ -117,7 +118,7 @@ function Sidebar({ datasets, selectedId, onSelect, onReorder, loading, error, re
         {error && <div className="sidebar-message sidebar-error">{error}<button onClick={reload}>Retry</button></div>}
         {!loading && !error && filtered.length === 0 && <div className="sidebar-message">{datasets.length ? 'No matching datasets.' : 'No datasets yet. Upload one below.'}</div>}
         {filtered.map((dataset) => (
-          <div className={`dataset-entry ${selectedId === dataset.id ? 'selected' : ''} ${overId === dataset.id && draggingId !== dataset.id ? 'drop-target' : ''}`} key={dataset.id} data-dataset-id={dataset.id}>
+          <div className={`dataset-entry ${selectedId === dataset.id ? 'selected' : ''} ${overId === dataset.id && draggingId !== dataset.id ? 'drop-target' : ''}`} key={dataset.id} data-dataset-id={dataset.id} style={{ viewTransitionName: `dataset-${dataset.id}` }}>
             <div className="dataset-row">
               {datasets.length > 1 && !search && <button className="dataset-drag" type="button"
                 aria-label={`Rearrange ${dataset.file_name}; drag or use arrow keys`}
@@ -168,7 +169,7 @@ function Sidebar({ datasets, selectedId, onSelect, onReorder, loading, error, re
         {clearError && <p className="history-error" role="alert">{clearError}</p>}
       </div>}
 
-      {DEMO_MODE ? <div className="sidebar-message demo-note">Public sample demo. Uploads are available when you run the project locally.</div> : <form className="upload-card" onSubmit={onUpload}>
+      {DEMO_MODE ? <div className="sidebar-message demo-note">Three read-only retail examples. Run the project locally to upload your own file.</div> : <form className="upload-card" onSubmit={onUpload}>
         <span className="upload-symbol" aria-hidden="true">↥</span>
         <strong>Add a dataset</strong>
         <p>CSV or Excel (.xlsx). Your file stays on the local backend.</p>
@@ -192,7 +193,7 @@ function Overview({ dataset, qualityState, onNavigate, onRetryQuality, onReport,
   return (
     <div className="section-stack">
       <section className="hero-panel">
-        <div><span className="hero-kicker">CURRENT DATASET</span><h2>{dataset.file_name}</h2><p>General profiling and anomaly checks work across datasets. Retail rules run when their required columns are present.</p></div>
+        <div><span className="hero-kicker">CURRENT DATASET</span><h2>{dataset.file_name}</h2><p>General profiling and anomaly checks work across datasets. Retail rules use matched fields when the required evidence is present.</p></div>
         <div className="hero-actions"><button className="button report-button" onClick={onReport} disabled={reporting}>{reporting ? 'Preparing PDF…' : 'Download PDF report'}</button>{reportError && <p role="alert" className="report-error">{reportError}</p>}</div>
       </section>
       <div className="stats-grid">
@@ -262,6 +263,7 @@ function Quality({ state, retry }) {
       <section className="score-banner"><div><span className="eyebrow">AVAILABLE RULE SCORE</span><div className="score-line"><strong>{quality.overall_quality_score === null ? '—' : formatNumber(quality.overall_quality_score)}</strong><span>/ 100</span></div><span className="grade-pill">{quality.quality_grade ? `${titleCase(quality.quality_grade)} by configured checks` : 'Not graded'}</span></div><p><strong>{evaluatedChecks} of {Object.keys(quality.dimensions).length} checks evaluated.</strong> {quality.score_breakdown ? `Half weighted average (${formatNumber(quality.score_breakdown.weighted_mean)}) plus half the lowest evaluated check (${dimensionLabel(quality.score_breakdown.limiting_dimension)}: ${formatNumber(quality.score_breakdown.limiting_dimension_score)}).` : 'No quality check could be evaluated.'} Retail checks are excluded when their fields are absent.</p></section>
       {highIssues.length > 0 && <div className="score-caution" role="note"><strong>{highIssues.length} high-severity finding{highIssues.length === 1 ? '' : 's'} need review regardless of the score.</strong> {highIssues[0].message}</div>}
       <div className="quality-grid">{Object.entries(quality.dimensions).map(([name, dimension]) => <div className="quality-card" key={name}><div className="quality-card-top"><span>{dimensionLabel(name)}</span><small>{dimension.score === null ? 'Excluded from score' : `Base weight ${formatNumber((quality.weights?.[name] ?? 0) * 100, 0)}%`}</small></div><strong>{dimension.score === null ? 'Not evaluated' : `${formatNumber(dimension.score)} / 100`}</strong>{dimension.score !== null && <div className="quality-track"><span style={{ width: `${dimension.score}%` }} /></div>}{name === 'completeness' && dimension.worst_column ? <p>Filled-cell score {formatNumber(dimension.cell_coverage_score)} · {dimension.worst_column} is {formatNumber(dimension.worst_column_missing_percentage)}% blank · extra deduction {formatNumber(dimension.concentration_penalty)} points (max 15).</p> : dimension.reason && <p>{dimension.reason}</p>}</div>)}</div>
+      {quality.retail_schema && <section className="panel schema-panel"><div className="panel-head"><div><span className="eyebrow">RETAIL FIELD MATCHING</span><h3>Fields used by the retail checks</h3></div></div><p>Common header variations are matched by name. Unclear matches are excluded; these rules do not understand arbitrary column meaning.</p>{Object.keys(quality.retail_schema.matches).length ? <div className="schema-fields">{Object.entries(quality.retail_schema.matches).map(([role, column]) => <span key={role}><strong>{titleCase(role)}</strong> → {column}</span>)}</div> : <p>No retail fields were matched.</p>}{Object.entries(quality.retail_schema.ambiguous).map(([role, columns]) => <p className="schema-warning" key={role}>Ambiguous {titleCase(role)}: {columns.join(', ')}. This role was not used.</p>)}{quality.dimensions.consistency.checks?.length > 0 && <p className="schema-note">Consistency compared {quality.dimensions.consistency.checks.map((check) => `${formatNumber(check.checked, 0)} ${check.rule === 'line_total' ? 'line totals' : 'product IDs'}`).join(' and ')}. Discounts and tax are handled only when the matching fields are present.</p>}</section>}
       <section className="panel"><div className="panel-head"><div><span className="eyebrow">FINDINGS</span><h3>Issues and review items</h3></div><span className="subtle-count">{issues.length} findings</span></div>{issues.length ? <div className="issue-list">{issues.map((issue, index) => <div className="issue-row" key={`${issue.dimension}-${index}`}><span className={`severity-label severity-${issue.severity}`}>{titleCase(issue.severity)}</span><div><strong>{dimensionLabel(issue.dimension)}{issue.column ? ` · ${issue.column}` : ''}</strong><p>{issue.message}</p></div><span className="issue-count">{formatNumber(issue.affected_records, 0)} affected</span></div>)}</div> : <EmptyBlock title="No issues reported">The available rules did not find any issues in this dataset.</EmptyBlock>}</section>
     </div>
   )
@@ -440,7 +442,7 @@ export default function App() {
 
   function reorderDataset(sourceId, targetId) {
     if (sourceId === targetId) return
-    setDatasets((current) => {
+    const update = () => setDatasets((current) => {
       const sourceIndex = current.findIndex((item) => item.id === sourceId)
       const targetIndex = current.findIndex((item) => item.id === targetId)
       if (sourceIndex < 0 || targetIndex < 0) return current
@@ -449,6 +451,9 @@ export default function App() {
       reordered.splice(targetIndex, 0, moved)
       return reordered
     })
+    if (document.startViewTransition && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      document.startViewTransition(() => flushSync(update))
+    } else update()
   }
 
   async function handleClearHistory() {

@@ -106,7 +106,7 @@ function Distribution({ datasetId, columns }) {
       const labels = bins.counts.map((_, index) => `${formatNumber(bins.edges[index], 2)} to ${formatNumber(bins.edges[index + 1], 2)}`)
       return {
         traces: [{ type: 'bar', x: bins.counts.map((_, index) => (bins.edges[index] + bins.edges[index + 1]) / 2),
-          y: bins.counts, width: bins.counts.map((_, index) => bins.edges[index + 1] - bins.edges[index]),
+          y: bins.counts, width: bins.counts.map((_, index) => (bins.edges[index + 1] - bins.edges[index]) * 0.86),
           customdata: labels, marker: { color: GREEN }, hovertemplate: '%{customdata}<br>%{y:,} rows<extra></extra>' }],
         layout: { xaxis: { title: { text: data.column }, gridcolor: '#edf2f0' }, yaxis: { title: { text: 'Rows' }, rangemode: 'tozero', gridcolor: '#edf2f0' }, margin: { l: 62, r: 22, t: 12, b: 58 } },
         labels, counts: bins.counts,
