@@ -18,6 +18,7 @@ QUALITY_WEIGHTS = {
 }
 COMPLETENESS_CONCENTRATION_WEIGHT = 0.60
 MAX_COMPLETENESS_CONCENTRATION_PENALTY = 15.0
+WEIGHTED_MEAN_SHARE = 0.50
 
 
 def assess_dataset_quality(dataset: Dataset) -> dict[str, Any]:
@@ -41,6 +42,7 @@ def assess_dataset_quality(dataset: Dataset) -> dict[str, Any]:
             "file_name": dataset.file_name,
             "overall_quality_score": None,
             "quality_grade": None,
+            "score_breakdown": None,
             "dimensions": dimensions,
             "issues": [],
             "weights": QUALITY_WEIGHTS,
@@ -61,17 +63,36 @@ def assess_dataset_quality(dataset: Dataset) -> dict[str, Any]:
         if result["score"] is not None
     }
     total_weight = sum(QUALITY_WEIGHTS[name] for name in available_dimensions)
-    overall_score = round(
+    weighted_mean = (
         sum(available_dimensions[name] * QUALITY_WEIGHTS[name] for name in available_dimensions)
-        / total_weight,
-        2,
+        / total_weight
     ) if total_weight else None
+    if weighted_mean is not None:
+        limiting_dimension, limiting_score = min(
+            available_dimensions.items(), key=lambda item: item[1]
+        )
+        overall_score = round(
+            WEIGHTED_MEAN_SHARE * weighted_mean
+            + (1 - WEIGHTED_MEAN_SHARE) * limiting_score,
+            2,
+        )
+        score_breakdown = {
+            "weighted_mean": round(weighted_mean, 2),
+            "limiting_dimension": limiting_dimension,
+            "limiting_dimension_score": limiting_score,
+            "weighted_mean_share": WEIGHTED_MEAN_SHARE,
+            "limiting_dimension_share": 1 - WEIGHTED_MEAN_SHARE,
+        }
+    else:
+        overall_score = None
+        score_breakdown = None
 
     return {
         "dataset_id": dataset.id,
         "file_name": dataset.file_name,
         "overall_quality_score": overall_score,
         "quality_grade": _quality_grade(overall_score),
+        "score_breakdown": score_breakdown,
         "dimensions": dimensions,
         "issues": issues,
         "weights": QUALITY_WEIGHTS,

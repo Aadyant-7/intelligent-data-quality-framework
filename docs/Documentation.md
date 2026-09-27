@@ -655,7 +655,7 @@ The earlier completeness score counted all cells equally. In an eight-column ret
 
 The 60% factor gives a substantially incomplete column meaningful influence. The 15-point cap prevents one optional, nearly empty column from overwhelming the entire assessment. These are project policy choices, not statistical definitions of correctness. The score uses percentages rather than absolute missing counts so otherwise identical small and large datasets remain comparable; the issue evidence still shows the number of affected rows. The formula, worst column, baseline, and deduction are exposed in the API, Quality view, and PDF. No source dataset or saved analysis result was modified.
 
-| Local dataset | Previous overall | Revised overall | Revised completeness | Worst column | Extra completeness deduction |
+| Local dataset | Previous overall | Overall after completeness revision | Revised completeness | Worst column | Extra completeness deduction |
 |---|---:|---:|---:|---|---:|
 | Full Online Retail (541,909 rows) | 95.47 | **91.55** (`Good`) | 83.78 | `CustomerID` 24.93% missing | 13.07 |
 | Online Retail sample (5,000 rows) | 98.61 | **94.81** (`Good`) | 84.32 | `CustomerID` 24.10% missing | 12.63 |
@@ -664,3 +664,21 @@ The 60% factor gives a substantially incomplete column meaningful influence. The
 Titanic demonstrates why the cap matters: a largely blank optional field now lowers the score, but it does not automatically define the entire file as unusable. A row with an unusual price or quantity is still an anomaly investigation lead, not a proven error and not a new quality-score penalty. Retail returns remain possible legitimate transactions.
 
 Verification: Python compilation, 38 backend tests, and the frontend production build passed. Tests cover concentrated missingness, the penalty cap, generic datasets, and earlier regressions. The running local API returned the revised scores above; an invalid dataset ID returned HTTP 404; the full retail PDF returned HTTP 200 with `application/pdf`. The local dashboard showed 91.55 and the precise CustomerID deduction after reselecting the dataset. The public Render backend was not redeployed during this change, so its displayed score may still follow the previous formula until that service is updated. Historical phase results earlier in this document are retained as dated verification records.
+
+## 24. Conservative Overall Score (2026-09-27)
+
+The completeness revision exposed a larger missing-value deduction, but the overall weighted average could still be close to 95 when the other dimensions were strong. The overall score now uses an equal blend of two different summaries of the *evaluated dimension scores*:
+
+`Overall = 0.50 × weighted mean of evaluated dimensions + 0.50 × lowest evaluated dimension`.
+
+The weighted mean retains the configured 30% completeness, 25% uniqueness, 25% retail validity, and 20% retail consistency base weights, renormalized when a retail check cannot run. The lowest dimension gives a weak area direct influence. This rule covers missingness, duplicates, and evaluated retail validity or consistency without adding separate penalties for individual findings already represented in those dimension scores. Statistical anomaly flags and possible legitimate returns are not quality-score penalties. The equal split is a documented project policy, not a universal definition of quality; the dashboard and PDF expose both inputs and name the limiting dimension.
+
+| Local dataset | Weighted mean | Limiting dimension | Final overall | Grade |
+|---|---:|---|---:|---|
+| Full Online Retail (541,909 rows) | 91.55 | Retail consistency 83.58 | **87.56** | Good |
+| Online Retail sample (5,000 rows) | 94.81 | Completeness 84.32 | **89.57** | Good |
+| Titanic (891 rows) | 87.40 | Completeness 76.90 | **82.15** | Fair |
+
+These outputs make the large missing-column rates more visible in the final number while retaining the high-severity issue evidence. They do not determine whether `CustomerID` or `Cabin` is required for a specific task. A single score still cannot represent every possible dataset rule; configurable required fields and domain rules would be a separate future feature.
+
+Verification: Python compilation, 39 backend tests, and the frontend production build passed. New regression checks cover a weak completeness dimension, a weak uniqueness dimension, and an unevaluated dataset. The running local API returned the three final scores and score breakdowns above; an invalid dataset ID returned HTTP 404; the full retail PDF returned HTTP 200 with `application/pdf`. In the local browser, the sample Quality view showed 89.57 with the 94.81 weighted average, 84.32 limiting completeness score, and high-severity CustomerID finding. Historical scores in earlier sections describe the scoring policy at their respective verification dates. The public Render backend was not redeployed during this change.

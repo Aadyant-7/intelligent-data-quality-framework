@@ -168,6 +168,16 @@ def render_report_pdf(
         ("BOTTOMPADDING", (0, 0), (-1, -1), 14),
     ]))
     story.extend([card, Spacer(1, 13)])
+    breakdown = quality.get("score_breakdown")
+    if breakdown:
+        story.append(Paragraph(
+            f"Overall rule score: 50% of the weighted average "
+            f"({_number(breakdown['weighted_mean'], 2)}) plus 50% of the lowest "
+            f"evaluated dimension ({_text(breakdown['limiting_dimension'].title())}: "
+            f"{_number(breakdown['limiting_dimension_score'], 2)}). "
+            "This conservative blend prevents stronger checks from hiding a weak area.",
+            styles["body"],
+        ))
     story.append(Paragraph(
         f"The source contains {_number(profile['total_missing_values'])} missing cells and "
         f"{_number(profile['duplicate_rows_count'])} duplicate rows. Anomaly detection "

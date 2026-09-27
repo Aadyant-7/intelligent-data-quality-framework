@@ -100,7 +100,9 @@ class PriorPhaseRegressionTests(unittest.TestCase):
         self.assertEqual(result["dimensions"]["consistency"]["status"], "not_evaluated")
         self.assertIn("Retail validity requires", result["dimensions"]["validity"]["reason"])
         self.assertIn("Retail consistency requires", result["dimensions"]["consistency"]["reason"])
-        self.assertEqual(result["overall_quality_score"], 81.82)
+        self.assertEqual(result["score_breakdown"]["weighted_mean"], 81.82)
+        self.assertEqual(result["score_breakdown"]["limiting_dimension"], "completeness")
+        self.assertEqual(result["overall_quality_score"], 74.25)
 
     def test_completeness_penalizes_missing_values_concentrated_in_one_column(self):
         pd.DataFrame({"Order": [1, 2, 3, 4], "CustomerID": [10, 11, 12, None]}).to_csv(
@@ -115,7 +117,19 @@ class PriorPhaseRegressionTests(unittest.TestCase):
         self.assertEqual(completeness["worst_column_missing_percentage"], 25.0)
         self.assertEqual(completeness["concentration_penalty"], 7.5)
         self.assertEqual(completeness["score"], 80.0)
-        self.assertEqual(result["overall_quality_score"], 89.09)
+        self.assertEqual(result["score_breakdown"]["weighted_mean"], 89.09)
+        self.assertEqual(result["overall_quality_score"], 84.55)
+
+    def test_overall_score_also_respects_weak_uniqueness(self):
+        pd.DataFrame({"Value": [1, 1, 1, 2]}).to_csv(self.csv_path, index=False)
+
+        result = assess_dataset_quality(self.dataset)
+
+        self.assertEqual(result["dimensions"]["completeness"]["score"], 100.0)
+        self.assertEqual(result["dimensions"]["uniqueness"]["score"], 50.0)
+        self.assertEqual(result["score_breakdown"]["weighted_mean"], 77.27)
+        self.assertEqual(result["score_breakdown"]["limiting_dimension"], "uniqueness")
+        self.assertEqual(result["overall_quality_score"], 63.64)
 
     def test_completeness_concentration_penalty_has_a_cap(self):
         pd.DataFrame({"Order": [1, 2, 3, 4], "OptionalField": [None] * 4}).to_csv(
@@ -135,6 +149,7 @@ class PriorPhaseRegressionTests(unittest.TestCase):
         result = assess_dataset_quality(self.dataset)
 
         self.assertIsNone(result["overall_quality_score"])
+        self.assertIsNone(result["score_breakdown"])
         self.assertTrue(all(
             dimension["status"] == "not_evaluated"
             for dimension in result["dimensions"].values()
