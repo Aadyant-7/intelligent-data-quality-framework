@@ -117,7 +117,7 @@ function Sidebar({ datasets, selectedId, onSelect, onReorder, loading, error, re
         {error && <div className="sidebar-message sidebar-error">{error}<button onClick={reload}>Retry</button></div>}
         {!loading && !error && filtered.length === 0 && <div className="sidebar-message">{datasets.length ? 'No matching datasets.' : 'No datasets yet. Upload one below.'}</div>}
         {filtered.map((dataset) => (
-          <div className={`dataset-entry ${overId === dataset.id && draggingId !== dataset.id ? 'drop-target' : ''}`} key={dataset.id} data-dataset-id={dataset.id}>
+          <div className={`dataset-entry ${selectedId === dataset.id ? 'selected' : ''} ${overId === dataset.id && draggingId !== dataset.id ? 'drop-target' : ''}`} key={dataset.id} data-dataset-id={dataset.id}>
             <div className="dataset-row">
               {datasets.length > 1 && !search && <button className="dataset-drag" type="button"
                 aria-label={`Rearrange ${dataset.file_name}; drag or use arrow keys`}
@@ -188,6 +188,7 @@ function Overview({ dataset, qualityState, onNavigate, onRetryQuality, onReport,
   const quality = qualityState.data
   const issues = priorityIssues(quality?.issues ?? [])
   const highIssues = issues.filter((issue) => issue.severity === 'high')
+  const evaluatedChecks = quality ? Object.values(quality.dimensions).filter((dimension) => dimension.score !== null).length : 0
   return (
     <div className="section-stack">
       <section className="hero-panel">
@@ -197,7 +198,7 @@ function Overview({ dataset, qualityState, onNavigate, onRetryQuality, onReport,
       <div className="stats-grid">
         <StatCard label="ROWS" value={formatNumber(dataset.rows_count, 0)} detail="Stored records" />
         <StatCard label="COLUMNS" value={formatNumber(dataset.columns_count, 0)} detail="Detected fields" />
-        <StatCard label="RULE SCORE" value={quality ? formatNumber(quality.overall_quality_score) : qualityState.loading ? '…' : '—'} detail={quality?.quality_grade ? `${titleCase(quality.quality_grade)} by available checks` : 'From available checks'} tone="stat-emphasis" />
+        <StatCard label="RULE SCORE" value={quality ? formatNumber(quality.overall_quality_score) : qualityState.loading ? '…' : '—'} detail={quality?.quality_grade ? `${titleCase(quality.quality_grade)} · ${evaluatedChecks} of ${Object.keys(quality.dimensions).length} checks` : 'From available checks'} tone="stat-emphasis" />
         <StatCard label={DEMO_MODE ? 'SAMPLE READY' : 'UPLOADED'} value={formatDate(dataset.uploaded_at)} detail={DEMO_MODE ? 'Public reference data' : 'Local storage'} />
       </div>
       {highIssues.length > 0 && <div className="score-caution" role="note"><strong>{highIssues.length} high-severity finding{highIssues.length === 1 ? '' : 's'} need review despite the score.</strong> The rule score does not know which fields your task requires. <button className="text-button" onClick={() => onNavigate('quality')}>See findings →</button></div>}
@@ -254,10 +255,11 @@ function Quality({ state, retry }) {
   const quality = state.data
   const issues = priorityIssues(quality.issues)
   const highIssues = issues.filter((issue) => issue.severity === 'high')
+  const evaluatedChecks = Object.values(quality.dimensions).filter((dimension) => dimension.score !== null).length
   return (
     <div className="section-stack">
       <div className="section-intro"><span className="eyebrow">EVIDENCE-BASED SCORE</span><h2>Data quality</h2><p>The score summarizes available checks. Each issue below shows what contributed to it.</p></div>
-      <section className="score-banner"><div><span className="eyebrow">AVAILABLE RULE SCORE</span><div className="score-line"><strong>{quality.overall_quality_score === null ? '—' : formatNumber(quality.overall_quality_score)}</strong><span>/ 100</span></div><span className="grade-pill">{quality.quality_grade ? `${titleCase(quality.quality_grade)} by configured checks` : 'Not graded'}</span></div><p>{quality.score_breakdown ? `Half weighted average (${formatNumber(quality.score_breakdown.weighted_mean)}) plus half the lowest evaluated check (${dimensionLabel(quality.score_breakdown.limiting_dimension)}: ${formatNumber(quality.score_breakdown.limiting_dimension_score)}).` : 'No quality check could be evaluated.'} Retail checks are excluded when their fields are absent.</p></section>
+      <section className="score-banner"><div><span className="eyebrow">AVAILABLE RULE SCORE</span><div className="score-line"><strong>{quality.overall_quality_score === null ? '—' : formatNumber(quality.overall_quality_score)}</strong><span>/ 100</span></div><span className="grade-pill">{quality.quality_grade ? `${titleCase(quality.quality_grade)} by configured checks` : 'Not graded'}</span></div><p><strong>{evaluatedChecks} of {Object.keys(quality.dimensions).length} checks evaluated.</strong> {quality.score_breakdown ? `Half weighted average (${formatNumber(quality.score_breakdown.weighted_mean)}) plus half the lowest evaluated check (${dimensionLabel(quality.score_breakdown.limiting_dimension)}: ${formatNumber(quality.score_breakdown.limiting_dimension_score)}).` : 'No quality check could be evaluated.'} Retail checks are excluded when their fields are absent.</p></section>
       {highIssues.length > 0 && <div className="score-caution" role="note"><strong>{highIssues.length} high-severity finding{highIssues.length === 1 ? '' : 's'} need review regardless of the score.</strong> {highIssues[0].message}</div>}
       <div className="quality-grid">{Object.entries(quality.dimensions).map(([name, dimension]) => <div className="quality-card" key={name}><div className="quality-card-top"><span>{dimensionLabel(name)}</span><small>{dimension.score === null ? 'Excluded from score' : `Base weight ${formatNumber((quality.weights?.[name] ?? 0) * 100, 0)}%`}</small></div><strong>{dimension.score === null ? 'Not evaluated' : `${formatNumber(dimension.score)} / 100`}</strong>{dimension.score !== null && <div className="quality-track"><span style={{ width: `${dimension.score}%` }} /></div>}{name === 'completeness' && dimension.worst_column ? <p>Filled-cell score {formatNumber(dimension.cell_coverage_score)} · {dimension.worst_column} is {formatNumber(dimension.worst_column_missing_percentage)}% blank · extra deduction {formatNumber(dimension.concentration_penalty)} points (max 15).</p> : dimension.reason && <p>{dimension.reason}</p>}</div>)}</div>
       <section className="panel"><div className="panel-head"><div><span className="eyebrow">FINDINGS</span><h3>Issues and review items</h3></div><span className="subtle-count">{issues.length} findings</span></div>{issues.length ? <div className="issue-list">{issues.map((issue, index) => <div className="issue-row" key={`${issue.dimension}-${index}`}><span className={`severity-label severity-${issue.severity}`}>{titleCase(issue.severity)}</span><div><strong>{dimensionLabel(issue.dimension)}{issue.column ? ` · ${issue.column}` : ''}</strong><p>{issue.message}</p></div><span className="issue-count">{formatNumber(issue.affected_records, 0)} affected</span></div>)}</div> : <EmptyBlock title="No issues reported">The available rules did not find any issues in this dataset.</EmptyBlock>}</section>
@@ -575,7 +577,7 @@ export default function App() {
         {activeTab === 'profile' && <Profile state={profileState} retry={() => setProfileReload((value) => value + 1)} />}
         {activeTab === 'quality' && <Quality state={qualityState} retry={() => setQualityReload((value) => value + 1)} />}
         {activeTab === 'anomalies' && <Anomalies state={anomalyState} retry={() => setAnomalyReload((value) => value + 1)} onPage={(offset) => { setPageOffset(offset); setExplanation(null); setExplanationError('') }} explanation={explanation} explanationLoading={explanationLoading} explanationError={explanationError} onExplain={explainRow} onCloseExplanation={() => setExplanation(null)} rowInput={rowInput} setRowInput={setRowInput} onLookup={handleLookup} />}
-        {activeTab === 'visualizations' && <Visualizations datasetId={selectedId} profileState={profileState} profileRetry={() => setProfileReload((value) => value + 1)} qualityState={qualityState} qualityRetry={() => setQualityReload((value) => value + 1)} anomalyState={visualAnomalyState} anomalyRetry={() => setVisualAnomalyReload((value) => value + 1)} />}
+        {activeTab === 'visualizations' && <Visualizations datasetId={selectedId} profileState={profileState} profileRetry={() => setProfileReload((value) => value + 1)} anomalyState={visualAnomalyState} anomalyRetry={() => setVisualAnomalyReload((value) => value + 1)} />}
       </>}
       <footer className="main-footer">Anomaly flags invite review. They are not automatic data-quality errors.</footer>
     </main>

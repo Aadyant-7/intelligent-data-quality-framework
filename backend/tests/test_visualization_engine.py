@@ -53,6 +53,16 @@ class VisualizationEngineTests(unittest.TestCase):
         self.assertEqual(sum(item["count"] for item in result["categories"]), 120)
         self.assertEqual(result["other_count"], 20)
 
+    def test_binary_numeric_field_uses_discrete_counts(self):
+        pd.DataFrame({"Survived": [0] * 30 + [1] * 20}).to_csv(self.csv_path, index=False)
+
+        result = visualize_dataset_column(self.dataset, "Survived")
+
+        self.assertEqual(result["distribution_kind"], "discrete")
+        self.assertEqual(result["categories"], [
+            {"value": "0", "count": 30}, {"value": "1", "count": 20},
+        ])
+
     def test_extreme_finite_numbers_still_produce_finite_bins(self):
         pd.DataFrame({"Amount": [-1e308, -1e307, 1e307, 1e308]}).to_csv(
             self.csv_path, index=False
@@ -76,6 +86,19 @@ class VisualizationEngineTests(unittest.TestCase):
         self.assertEqual(result["time_buckets"], [
             {"period": "2025-01", "count": 2},
             {"period": "2025-02", "count": 1},
+        ])
+
+    def test_date_chart_includes_empty_months(self):
+        pd.DataFrame({"RecordedAt": ["2025-01-01", "2025-03-01"]}).to_csv(
+            self.csv_path, index=False
+        )
+
+        result = visualize_dataset_column(self.dataset, "RecordedAt")
+
+        self.assertEqual(result["time_buckets"], [
+            {"period": "2025-01", "count": 1},
+            {"period": "2025-02", "count": 0},
+            {"period": "2025-03", "count": 1},
         ])
 
     def test_identifier_is_not_plotted_as_measure(self):

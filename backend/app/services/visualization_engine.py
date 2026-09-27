@@ -13,6 +13,7 @@ from app.services.dataset_storage import resolve_dataset_path
 
 HISTOGRAM_BINS = 24
 TOP_CATEGORIES = 12
+MAX_DISCRETE_NUMERIC_VALUES = 12
 
 
 def visualize_dataset_column(dataset: Dataset, column: str) -> dict[str, Any]:
@@ -43,12 +44,25 @@ def visualize_dataset_column(dataset: Dataset, column: str) -> dict[str, Any]:
         if not finite.size:
             return {**result, "status": "not_evaluated", "reason": "No finite numeric values are available."}
 
+        if finite.size >= 20 and np.unique(finite).size <= MAX_DISCRETE_NUMERIC_VALUES:
+            counts = pd.Series(finite).value_counts().sort_index()
+            return {
+                **result,
+                "status": "evaluated",
+                "distribution_kind": "discrete",
+                "categories": [
+                    {"value": f"{value:g}", "count": int(count)}
+                    for value, count in counts.items()
+                ],
+            }
+
         scale = float(np.max(np.abs(finite)))
         lower, upper = np.quantile(finite / scale, [0.01, 0.99]) * scale if scale else (0.0, 0.0)
         central = finite[(finite >= lower) & (finite <= upper)]
         return {
             **result,
             "status": "evaluated",
+            "distribution_kind": "histogram",
             "full_range": _histogram(finite),
             "central_range": _histogram(central),
             "outside_central_count": int(finite.size - central.size),
@@ -67,6 +81,8 @@ def visualize_dataset_column(dataset: Dataset, column: str) -> dict[str, Any]:
         year_span = valid.max().year - valid.min().year
         frequency = "Y" if year_span > 3 else "M"
         counts = valid.dt.to_period(frequency).value_counts().sort_index()
+        periods = pd.period_range(counts.index.min(), counts.index.max(), freq=frequency)
+        counts = counts.reindex(periods, fill_value=0)
         return {
             **result,
             "status": "evaluated",
