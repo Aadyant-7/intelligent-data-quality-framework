@@ -87,9 +87,11 @@ function Distribution({ datasetId, columns }) {
       const counts = data.categories.map((item) => item.count)
       if (data.other_count) { labels.push('Other categories'); counts.push(data.other_count) }
       return { traces: [{ type: 'pie', labels, values: counts, hole: 0.66, sort: false,
-        textinfo: 'none', marker: { colors: CATEGORY_COLORS, line: { color: '#fff', width: 2 } },
+        textinfo: 'percent', textposition: 'inside', insidetextfont: { color: '#fff', size: 12 },
+        marker: { colors: CATEGORY_COLORS, line: { color: '#fff', width: 2 } },
         hovertemplate: '%{label}<br>%{value:,} rows · %{percent}<extra></extra>' }],
-      layout: { showlegend: true, legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.08, font: { size: 11 } },
+      layout: { showlegend: true, uniformtext: { minsize: 11, mode: 'hide' },
+        legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.08, font: { size: 11 } },
         margin: { l: 24, r: 24, t: 8, b: 42 }, annotations: [{ text: `${formatNumber(data.usable_count, 0)}<br>usable rows`,
           x: 0.5, y: 0.5, showarrow: false, font: { size: 13, color: '#31575a' } }] }, labels, counts }
     }

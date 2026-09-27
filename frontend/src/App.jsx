@@ -103,7 +103,7 @@ function Sidebar({ datasets, selectedId, onSelect, onReorder, loading, error, re
 
   return (
     <aside className="sidebar">
-      <div className="brand"><div className="brand-mark">DQ</div><div><strong>Data Quality</strong><span>Studio</span></div></div>
+      <div className="brand"><img className="brand-mark" src="/brand-mark.svg" alt="" /><div><strong>Data Quality</strong><span>Studio</span></div></div>
       <div className="sidebar-heading"><span>Datasets</span><span className="count-pill">{datasets.length}</span></div>
       {(datasets.length > 1 || search) && <label className="search-wrap">
         <span className="sr-only">Search datasets</span>
@@ -159,8 +159,8 @@ function Sidebar({ datasets, selectedId, onSelect, onReorder, loading, error, re
         ))}
       </div>
 
-      {!DEMO_MODE && <div className="history-actions">
-        {!confirmClear ? <button className="history-link" onClick={() => setConfirmClear(true)} disabled={clearing}>Clear history</button> : <div className="history-confirm">
+      {!DEMO_MODE && datasets.length > 0 && <div className="history-actions">
+        {!confirmClear ? <><span className="library-caption">LOCAL LIBRARY</span><button className="history-link" onClick={() => setConfirmClear(true)} disabled={clearing}><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4.5 7h15m-13.5 0 .7 12h10.6L18 7M9 7V4.5h6V7m-5 4v5m4-5v5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>Clear history</button></> : <div className="history-confirm">
           <strong>Clear all saved datasets?</strong>
           <p>This deletes local uploads and saved records, including older entries hidden from this list.</p>
           <div><button onClick={() => setConfirmClear(false)} disabled={clearing}>Cancel</button><button className="history-delete" onClick={onClear} disabled={clearing}>{clearing ? 'Clearing…' : 'Delete all'}</button></div>
