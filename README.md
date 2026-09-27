@@ -2,7 +2,7 @@
 
 An educational data-quality tool that profiles structured datasets, scores the checks it can evaluate, flags unusual records, and explains the evidence in a dashboard and PDF report.
 
-The reference data is a real Online Retail dataset. An unusual transaction is a reason to investigate, not automatically an error.
+The reference data is a real Online Retail dataset. General profiling, completeness, duplicate, and numeric anomaly checks work across structured datasets; retail rules run only when their required columns exist. An unusual transaction is a reason to investigate, not automatically an error.
 
 **Try the read-only public demo:** [Data Quality Studio](https://intelligent-data-quality-framework.vercel.app). It opens a 5,000-row Online Retail sample. [API health](https://intelligent-data-quality-api.onrender.com/health) may respond slowly after inactivity because the free service sleeps.
 
@@ -397,7 +397,11 @@ The completeness dimension starts with the percentage of filled cells, then dedu
 
 ### Conservative overall scoring (September 2026)
 
-The overall score now gives equal influence to the weighted average of evaluated dimensions and the lowest evaluated dimension. This is a transparent, risk-conscious rule that works whether the weakest area is completeness, uniqueness, retail validity, or retail consistency. The local results are full Online Retail **87.56** (`Good`), 5,000-row sample **89.57** (`Good`), and Titanic **82.15** (`Fair`). Quality and the PDF show the weighted average and limiting dimension. Individual findings are not deducted again, and statistical anomaly counts are not treated as errors. These scores express this project's policy rather than universal fitness for every business use.
+The overall score now gives equal influence to the weighted average of evaluated dimensions and the lowest evaluated dimension. This is a transparent, risk-conscious rule that works whether the weakest area is completeness, uniqueness, retail validity, or retail consistency. The local results are full Online Retail **87.56** (`Good`), 5,000-row sample **89.57** (`Good`), and Titanic **82.15** (`Fair`). Quality and the PDF show the weighted average and limiting dimension. Individual findings are not deducted again, and statistical anomaly counts are not treated as errors. This 50/50 split is a project heuristic, not an empirically calibrated quality standard; use the dimension evidence and the needs of the intended analysis alongside it.
+
+### Dataset labels and scope (September 2026)
+
+The dashboard shows dataset names and row counts without database IDs. IDs remain stable internally for API requests and deletion, so gaps after removing earlier uploads are expected. The dashboard also states that its general checks work across datasets while retail rules need matching columns. The UK Online Retail file is the reference example, not a restriction on uploads.
 
 ---
 

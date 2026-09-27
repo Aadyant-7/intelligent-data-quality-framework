@@ -104,8 +104,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .hero-kicker { font-size: 10px; letter-spacing: .2em; color: #a0dfd1; font-weight: 850; }
 .hero-panel h2 { margin: 12px 0 8px; overflow-wrap: anywhere; letter-spacing: -.045em; line-height: 1.12; font-size: clamp(22px, 3vw, 30px); }
 .hero-panel p { margin: 0; max-width: 550px; color: #c5e0df; font-size: 12px; line-height: 1.55; }
-.hero-id { border: 1px solid rgba(185, 237, 226, .3); border-radius: 11px; padding: 9px 13px; color: #b9d8d4; font-size: 10px; white-space: nowrap; letter-spacing: .08em; }
-.hero-id strong { color: white; margin-left: 6px; font-size: 13px; }
 .hero-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 12px; min-width: 175px; }
 .report-button { background: #f4fcf8; color: #174b45; border: 1px solid #f4fcf8; white-space: nowrap; }
 .report-button:hover:not(:disabled) { background: white; }
@@ -287,7 +285,6 @@ details summary { color: #198774; cursor: pointer; font-size: 11px; font-weight:
   .stats-grid, .stats-grid.three, .quality-grid { grid-template-columns: 1fr; }
   .hero-panel { display: block; }
   .hero-actions { align-items: flex-start; margin-top: 18px; }
-  .hero-id { display: none; }
   .dimension-row { grid-template-columns: 85px 1fr 82px; }
   .score-banner { display: block; }
   .score-banner p { margin-top: 15px; }

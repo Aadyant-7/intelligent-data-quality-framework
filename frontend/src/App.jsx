@@ -57,7 +57,7 @@ function StatCard({ label, value, detail, tone = '' }) {
 
 function Sidebar({ datasets, selectedId, onSelect, loading, error, reload, file, setFile, uploading, uploadError, onUpload, search, setSearch, confirmClear, setConfirmClear, clearing, clearError, onClear, removeId, setRemoveId, removingId, removeError, onRemove }) {
   const filtered = datasets.filter((dataset) =>
-    dataset.file_name.toLowerCase().includes(search.toLowerCase()) || String(dataset.id).includes(search)
+    dataset.file_name.toLowerCase().includes(search.toLowerCase())
   )
 
   return (
@@ -79,7 +79,7 @@ function Sidebar({ datasets, selectedId, onSelect, loading, error, reload, file,
             <div className="dataset-row">
               <button className={`dataset-item ${selectedId === dataset.id ? 'selected' : ''}`} onClick={() => onSelect(dataset.id)} aria-current={selectedId === dataset.id ? 'true' : undefined}>
                 <span className="dataset-icon">▦</span>
-                <span className="dataset-text"><strong title={dataset.file_name}>{dataset.file_name}</strong><small>{formatNumber(dataset.rows_count, 0)} rows · #{dataset.id}</small></span>
+                <span className="dataset-text"><strong title={dataset.file_name}>{dataset.file_name}</strong><small>{formatNumber(dataset.rows_count, 0)} rows</small></span>
               </button>
               {!DEMO_MODE && <button className="dataset-remove" aria-label={`Remove ${dataset.file_name}`} title={`Remove ${dataset.file_name}`} onClick={() => setRemoveId(dataset.id)} disabled={removingId !== null}>×</button>}
             </div>
@@ -124,8 +124,8 @@ function Overview({ dataset, qualityState, onNavigate, onRetryQuality, onReport,
   return (
     <div className="section-stack">
       <section className="hero-panel">
-        <div><span className="hero-kicker">CURRENT DATASET</span><h2>{dataset.file_name}</h2><p>Review its structure, quality checks, and unusual records.</p></div>
-        <div className="hero-actions"><div className="hero-id">DATASET <strong>#{dataset.id}</strong></div><button className="button report-button" onClick={onReport} disabled={reporting}>{reporting ? 'Preparing PDF…' : 'Download PDF report'}</button>{reportError && <p role="alert" className="report-error">{reportError}</p>}</div>
+        <div><span className="hero-kicker">CURRENT DATASET</span><h2>{dataset.file_name}</h2><p>General profiling and anomaly checks work across datasets. Retail rules run when their required columns are present.</p></div>
+        <div className="hero-actions"><button className="button report-button" onClick={onReport} disabled={reporting}>{reporting ? 'Preparing PDF…' : 'Download PDF report'}</button>{reportError && <p role="alert" className="report-error">{reportError}</p>}</div>
       </section>
       <div className="stats-grid">
         <StatCard label="ROWS" value={formatNumber(dataset.rows_count, 0)} detail="Stored records" />
