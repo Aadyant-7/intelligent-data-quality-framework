@@ -20,7 +20,7 @@ DEMO_DATASET_PATHS = frozenset(DEMO_SOURCES)
 DEMO_NAMES = {
     "uploads/demo-online-retail-sample.csv": "UK Online Retail (excerpt).csv",
     "uploads/demo-retail-store-sales.csv": "Retail Store Sales (messy).csv",
-    "uploads/demo-supermarket-sales.csv": "Supermarket Sales (tax included).csv",
+    "uploads/demo-supermarket-sales.csv": "Supermarket QA example (edited).csv",
 }
 
 
